@@ -1,5 +1,6 @@
 import { defineAgent, type JobContext, cli, voice, ServerOptions } from '@livekit/agents';
 import * as google from '@livekit/agents-plugin-google';
+import * as silero from '@livekit/agents-plugin-silero';
 import { fileURLToPath } from 'node:url';
 
 const KHETSATHI_VOICE_PROMPT = `MULTILINGUAL INSTRUCTION (CRITICAL - ALWAYS FOLLOW):
@@ -60,6 +61,9 @@ HOW TO TALK:
 - Since this is a voice conversation, speak naturally and clearly. Avoid technical jargon.`;
 
 export default defineAgent({
+  prewarm: async (proc) => {
+    proc.userData.vad = await silero.VAD.load();
+  },
   entry: async (ctx: JobContext) => {
     await ctx.connect();
 
@@ -97,15 +101,24 @@ export default defineAgent({
       temperature: 0.7,
       inputAudioTranscription: {},
       outputAudioTranscription: {},
+      realtimeInputConfig: {
+        automaticActivityDetection: {
+          disabled: true,
+        },
+      },
     });
 
     const agent = new voice.Agent({
       instructions: KHETSATHI_VOICE_PROMPT + `\n\nThe farmer's preferred language is ${language}. Start the conversation in ${language}, but if they speak in a different language, switch to match them.`,
       llm: model,
+      vad: ctx.proc.userData.vad! as silero.VAD,
       allowInterruptions: true,
+      turnDetection: 'vad',
     });
 
-    const session = new voice.AgentSession({});
+    const session = new voice.AgentSession({
+      userAwayTimeout: 60,
+    });
 
     session.on('user_input_transcribed' as any, (ev: any) => {
       if (ev.transcript && ev.isFinal) {
