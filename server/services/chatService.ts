@@ -289,4 +289,28 @@ function getGreeting(language: string): string {
   }
 }
 
+export async function generateConversationSummary(
+  messages: ChatMessage[],
+  diagnosis: Record<string, any>
+): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const conversation = messages
+    .map((m) => `${m.role === "user" ? "Farmer" : "Assistant"}: ${m.content}`)
+    .join("\n");
+
+  const prompt = `Summarize this conversation between a farmer and an AI crop doctor in 3-5 sentences. Include: farmer's name (if mentioned), crop name, location, disease diagnosed, key details about their farm (soil type, irrigation, crop stage), and what treatment was recommended.
+
+Conversation:
+${conversation}
+
+Diagnosis Data:
+${JSON.stringify(diagnosis, null, 2)}
+
+Write a concise summary in English. Just the summary text, nothing else.`;
+
+  const result = await model.generateContent(prompt);
+  return result.response.text().trim();
+}
+
 export { getGreeting };

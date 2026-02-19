@@ -3,9 +3,10 @@ import { createServer, type Server } from "http";
 import multer from "multer";
 import { uploadToS3 } from "./services/s3Service";
 import { detectDisease } from "./services/diseaseService";
-import { generateChatReply, extractCropAndLocation, detectPlanIntent, generateConversationalPlan, getGreeting, type ChatMessage } from "./services/chatService";
-import { saveUserToDynamo } from "./services/dynamoService";
-import { saveUserCase } from "./services/dynamoService";
+import { generateChatReply, extractCropAndLocation, detectPlanIntent, generateConversationalPlan, generateConversationSummary, getGreeting, type ChatMessage } from "./services/chatService";
+import { saveUserToDynamo, saveUserCase, saveChatSummary } from "./services/dynamoService";
+import { generatePdf } from "./services/pdfService";
+import { uploadPdfToS3 } from "./services/s3Service";
 import { phoneSchema, languageSchema } from "@shared/schema";
 import { z } from "zod";
 import { log } from "./index";
@@ -62,6 +63,7 @@ const generatePlanSchema = z.object({
   diagnosis: z.record(z.any()),
   language: z.string(),
   imageUrls: z.array(z.string()),
+  phone: z.string().min(10),
 });
 
 const saveUsercaseSchema = z.object({
@@ -219,11 +221,37 @@ export async function registerRoutes(
       if (!validation.success) {
         return res.status(400).json({ message: validation.error.errors.map(e => e.message).join(", ") });
       }
-      const { messages, diagnosis, language, imageUrls } = validation.data;
+      const { messages, diagnosis, language, imageUrls, phone } = validation.data;
       log("Generating treatment plan from conversation...");
       const plan = await generateConversationalPlan(messages, diagnosis, language, imageUrls);
-      log("Treatment plan generated");
-      return res.json({ plan });
+      log("Treatment plan generated, generating PDF...");
+
+      let pdfUrl = "";
+      try {
+        const pdfBuffer = await generatePdf(plan, language);
+        pdfUrl = await uploadPdfToS3(pdfBuffer, phone);
+        log(`PDF uploaded to S3: ${pdfUrl}`);
+      } catch (pdfErr: any) {
+        log(`PDF generation/upload error: ${pdfErr.message}`);
+      }
+
+      try {
+        const conversationSummary = await generateConversationSummary(messages, diagnosis);
+        await saveChatSummary({
+          phone,
+          timestamp: new Date().toISOString(),
+          conversationSummary,
+          pdfUrl: pdfUrl || "pdf_generation_failed",
+          language,
+          diagnosis,
+          imageUrls,
+        });
+        log(`Chat summary saved for ${phone}`);
+      } catch (summaryErr: any) {
+        log(`Chat summary save error: ${summaryErr.message}`);
+      }
+
+      return res.json({ plan, pdfUrl });
     } catch (error: any) {
       log(`Generate plan error: ${error.message}`);
       return res.status(500).json({ message: "Plan generation failed" });

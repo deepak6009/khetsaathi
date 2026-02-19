@@ -43,3 +43,30 @@ export async function uploadToS3(
   const cfUrl = cloudfrontUrl.endsWith("/") ? cloudfrontUrl : cloudfrontUrl + "/";
   return `${cfUrl}${fileKey}`;
 }
+
+export async function uploadPdfToS3(
+  pdfBuffer: Buffer,
+  userId: string
+): Promise<string> {
+  const bucketName = "khetsathi-crop-images";
+  const cloudfrontUrl = process.env.CLOUDFRONT_URL;
+
+  if (!cloudfrontUrl) throw new Error("CLOUDFRONT_URL is not configured");
+
+  const s3Client = getS3Client();
+  const last5 = userId.replace(/\D/g, "").slice(-5);
+  const fileKey = `${last5}/plans/${randomUUID()}.pdf`;
+
+  await s3Client.send(
+    new PutObjectCommand({
+      Bucket: bucketName,
+      Key: fileKey,
+      Body: pdfBuffer,
+      ContentType: "application/pdf",
+      ContentDisposition: "inline",
+    })
+  );
+
+  const cfUrl = cloudfrontUrl.endsWith("/") ? cloudfrontUrl : cloudfrontUrl + "/";
+  return `${cfUrl}${fileKey}`;
+}

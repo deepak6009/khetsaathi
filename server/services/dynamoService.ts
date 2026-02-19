@@ -15,6 +15,7 @@ import {
 const DYNAMO_REGION = "ap-south-1";
 const KHET_SATHI_USERS_TABLE = "KhetSathiUsers";
 const USERCASES_TABLE = "usercases";
+const CHATSUMMARY_TABLE = "chatsummary";
 
 const client = new DynamoDBClient({
   region: DYNAMO_REGION,
@@ -28,6 +29,7 @@ const docClient = DynamoDBDocumentClient.from(client);
 
 let khetSathiUsersTableReady = false;
 let usercasesTableReady = false;
+let chatsummaryTableReady = false;
 
 async function ensureTable(tableName: string, setReady: (val: boolean) => void): Promise<void> {
   try {
@@ -44,7 +46,7 @@ async function ensureTable(tableName: string, setReady: (val: boolean) => void):
             BillingMode: "PAY_PER_REQUEST",
           })
         );
-      } else if (tableName === USERCASES_TABLE) {
+      } else if (tableName === USERCASES_TABLE || tableName === CHATSUMMARY_TABLE) {
         await client.send(
           new CreateTableCommand({
             TableName: tableName,
@@ -187,4 +189,55 @@ export async function getUserCases(phone: string): Promise<UserCaseData[]> {
   );
 
   return (result.Items as UserCaseData[]) || [];
+}
+
+async function ensureChatsummaryTable(): Promise<void> {
+  if (chatsummaryTableReady) return;
+  await ensureTable(CHATSUMMARY_TABLE, (val) => {
+    chatsummaryTableReady = val;
+  });
+}
+
+export interface ChatSummaryData {
+  phone: string;
+  timestamp: string;
+  conversationSummary: string;
+  pdfUrl: string;
+  language?: string;
+  diagnosis?: Record<string, any>;
+  imageUrls?: string[];
+}
+
+export async function saveChatSummary(data: ChatSummaryData): Promise<ChatSummaryData> {
+  await ensureChatsummaryTable();
+
+  const summaryData: ChatSummaryData = {
+    ...data,
+    timestamp: data.timestamp || new Date().toISOString(),
+  };
+
+  await docClient.send(
+    new PutCommand({
+      TableName: CHATSUMMARY_TABLE,
+      Item: summaryData,
+    })
+  );
+
+  return summaryData;
+}
+
+export async function getChatSummaries(phone: string): Promise<ChatSummaryData[]> {
+  await ensureChatsummaryTable();
+
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: CHATSUMMARY_TABLE,
+      KeyConditionExpression: "phone = :phone",
+      ExpressionAttributeValues: {
+        ":phone": phone,
+      },
+    })
+  );
+
+  return (result.Items as ChatSummaryData[]) || [];
 }

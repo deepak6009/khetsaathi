@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Leaf, Upload, X, Camera, Phone, Globe, ArrowRight, Check, Send, Bot, Languages } from "lucide-react";
-import { TreatmentPlan } from "@/components/treatment-plan";
+import { Leaf, Upload, X, Camera, Phone, Globe, ArrowRight, Check, Send, Bot, Languages, FileText, Download } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Step = "phone" | "language" | "upload" | "chat";
@@ -42,6 +41,7 @@ export default function Home() {
   const [diagnosis, setDiagnosis] = useState<Record<string, any> | null>(null);
   const [treatmentPlan, setTreatmentPlan] = useState<string | null>(null);
   const [planLanguage, setPlanLanguage] = useState<Language | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [diagnosisInProgress, setDiagnosisInProgress] = useState(false);
 
   const stepIndex = stepOrder.indexOf(currentStep);
@@ -271,32 +271,16 @@ export default function Home() {
       const res = await fetch("/api/chat/generate-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: currentMessages, diagnosis: currentDiagnosis, language: selectedLang, imageUrls: urls }),
+        body: JSON.stringify({ messages: currentMessages, diagnosis: currentDiagnosis, language: selectedLang, imageUrls: urls, phone }),
       });
       if (!res.ok) throw new Error("Plan generation failed");
       const data = await res.json();
       setTreatmentPlan(data.plan);
       setPlanLanguage(selectedLang);
+      setPdfUrl(data.pdfUrl || null);
       setChatPhase("plan_ready");
 
       setMessages((prev) => [...prev, { role: "assistant", content: labels.planReady[selectedLang] || labels.planReady.English }]);
-
-      const conversationSummary = currentMessages
-        .map((m) => `${m.role === "user" ? "Farmer" : "AI"}: ${m.content}`)
-        .join("\n");
-
-      await fetch("/api/save-usercase", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone,
-          conversationSummary,
-          diagnosis: currentDiagnosis,
-          treatmentPlan: data.plan,
-          language: selectedLang,
-          imageUrls: urls,
-        }),
-      });
     } catch (err: any) {
       toast({ title: "Plan generation failed", variant: "destructive" });
     } finally {
@@ -549,6 +533,80 @@ export default function Home() {
                   </div>
                 )}
 
+                {treatmentPlan && planLanguage && (
+                  <div className="flex gap-2 justify-start">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
+                      <Bot className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="max-w-[80%]">
+                      {pdfUrl ? (
+                        <div
+                          className="bg-muted rounded-2xl rounded-bl-sm overflow-hidden cursor-pointer"
+                          onClick={() => window.open(pdfUrl, "_blank")}
+                          data-testid="card-pdf-preview"
+                        >
+                          <div className="bg-primary/10 px-4 py-3 flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-md bg-red-500/90 flex items-center justify-center flex-shrink-0">
+                              <FileText className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate" data-testid="text-pdf-title">
+                                {planLanguage === "Telugu" ? "7-రోజుల చికిత్స ప్రణాళిక" : planLanguage === "Hindi" ? "7-दिन की उपचार योजना" : "7-Day Treatment Plan"}
+                              </p>
+                              <p className="text-xs text-muted-foreground">PDF &middot; KhetSathi</p>
+                            </div>
+                          </div>
+                          <div className="px-4 py-2 flex items-center justify-between gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {planLanguage === "Telugu" ? "తెలుగు" : planLanguage === "Hindi" ? "हिन्दी" : "English"}
+                            </span>
+                            <a
+                              href={pdfUrl}
+                              download
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-primary"
+                              data-testid="button-download-pdf"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              {planLanguage === "Telugu" ? "డౌన్‌లోడ్" : planLanguage === "Hindi" ? "डाउनलोड" : "Download"}
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3" data-testid="card-plan-text-fallback">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FileText className="w-4 h-4 text-primary" />
+                            <p className="text-sm font-medium text-foreground">
+                              {planLanguage === "Telugu" ? "7-రోజుల చికిత్స ప్రణాళిక" : planLanguage === "Hindi" ? "7-दिन की उपचार योजना" : "7-Day Treatment Plan"}
+                            </p>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {planLanguage === "Telugu" ? "మీ ప్లాన్ సిద్ధంగా ఉంది" : planLanguage === "Hindi" ? "आपकी योजना तैयार है" : "Your plan is ready"}
+                          </p>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                        <span className="text-xs text-muted-foreground">{getLabel("getPlanIn")}:</span>
+                        {(["English", "Telugu", "Hindi"] as Language[]).filter((l) => l !== planLanguage).map((lang) => (
+                          <Button
+                            key={lang}
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => regeneratePlanInLanguage(lang)}
+                            disabled={isTyping}
+                            data-testid={`button-regen-plan-${lang.toLowerCase()}`}
+                          >
+                            <Languages className="w-3.5 h-3.5 mr-1" />
+                            {lang === "English" ? "English" : lang === "Telugu" ? "తెలుగు" : "हिन्दी"}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {isTyping && (
                   <div className="flex gap-2 justify-start">
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
@@ -566,28 +624,6 @@ export default function Home() {
 
                 <div ref={chatEndRef} />
               </div>
-
-              {treatmentPlan && planLanguage && (
-                <div className="px-4 pb-2 space-y-2">
-                  <TreatmentPlan plan={treatmentPlan} language={planLanguage} />
-                  <div className="flex items-center justify-center gap-2 flex-wrap">
-                    <span className="text-xs text-muted-foreground">{getLabel("getPlanIn")}:</span>
-                    {(["English", "Telugu", "Hindi"] as Language[]).filter((l) => l !== planLanguage).map((lang) => (
-                      <Button
-                        key={lang}
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => regeneratePlanInLanguage(lang)}
-                        disabled={isTyping}
-                        data-testid={`button-regen-plan-${lang.toLowerCase()}`}
-                      >
-                        <Languages className="w-3.5 h-3.5 mr-1" />
-                        {lang === "English" ? "English" : lang === "Telugu" ? "తెలుగు" : "हिन्दी"}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               <div className="border-t border-border px-3 py-2.5 bg-card">
                 <div className="flex gap-2 items-center max-w-lg mx-auto">
