@@ -1,6 +1,5 @@
-import { defineAgent, type JobContext, type JobProcess, cli, voice, ServerOptions } from '@livekit/agents';
+import { defineAgent, type JobContext, cli, voice, ServerOptions } from '@livekit/agents';
 import * as google from '@livekit/agents-plugin-google';
-import * as silero from '@livekit/agents-plugin-silero';
 import { fileURLToPath } from 'node:url';
 
 const KHETSATHI_VOICE_PROMPT = `MULTILINGUAL INSTRUCTION (CRITICAL - ALWAYS FOLLOW):
@@ -61,11 +60,11 @@ HOW TO TALK:
 - Since this is a voice conversation, speak naturally and clearly. Avoid technical jargon.`;
 
 export default defineAgent({
-  prewarm: async (proc: JobProcess) => {
-    proc.userData.vad = await silero.VAD.load();
-  },
   entry: async (ctx: JobContext) => {
     await ctx.connect();
+
+    const participant = await ctx.waitForParticipant();
+    console.log(`[voice] Participant joined: ${participant.identity}`);
 
     const metadata = ctx.room.metadata;
     let language = 'English';
@@ -76,35 +75,46 @@ export default defineAgent({
       }
     } catch {}
 
+    try {
+      const participantMeta = participant.metadata;
+      if (participantMeta) {
+        const parsed = JSON.parse(participantMeta);
+        language = parsed.language || language;
+      }
+    } catch {}
+
+    console.log(`[voice] Language: ${language}`);
+
     const languageGreeting = language === 'Telugu'
       ? 'Greet the farmer warmly in Telugu and ask their name.'
       : language === 'Hindi'
         ? 'Greet the farmer warmly in Hindi and ask their name.'
         : 'Greet the farmer warmly in English and ask their name.';
 
+    const model = new google.beta.realtime.RealtimeModel({
+      voice: 'Kore',
+      apiKey: process.env.GEMINI_API_KEY,
+      temperature: 0.7,
+      inputAudioTranscription: {},
+      outputAudioTranscription: {},
+    });
+
     const agent = new voice.Agent({
       instructions: KHETSATHI_VOICE_PROMPT + `\n\nThe farmer's preferred language is ${language}. Start the conversation in ${language}, but if they speak in a different language, switch to match them.`,
-      llm: new google.beta.realtime.RealtimeModel({
-        voice: 'Kore',
-        apiKey: process.env.GEMINI_API_KEY,
-        temperature: 0.7,
-        inputAudioTranscription: {},
-        outputAudioTranscription: {},
-      }),
-      vad: ctx.proc.userData.vad as silero.VAD,
+      llm: model,
       allowInterruptions: true,
     });
 
     const session = new voice.AgentSession({});
 
     session.on('user_input_transcribed' as any, (ev: any) => {
-      console.log(`[voice] Farmer said: ${ev.transcript}`);
+      if (ev.transcript && ev.isFinal) {
+        console.log(`[voice] Farmer said: ${ev.transcript}`);
+      }
     });
 
-    session.on('conversation_item_added' as any, (ev: any) => {
-      if (ev.item?.role === 'assistant') {
-        console.log(`[voice] KhetSathi responded`);
-      }
+    session.on('agent_state_changed' as any, (ev: any) => {
+      console.log(`[voice] Agent state: ${ev.oldState} -> ${ev.newState}`);
     });
 
     await session.start({
