@@ -1,16 +1,131 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import multer from "multer";
+import { uploadToS3 } from "./services/s3Service";
+import { detectDisease } from "./services/diseaseService";
+import { generateTreatmentPlan } from "./services/geminiService";
+import { diagnoseRequestSchema, treatmentPlanRequestSchema, languageSchema } from "@shared/schema";
+import { z } from "zod";
+import { log } from "./index";
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed"));
+    }
+  },
+});
+
+const formFieldsSchema = z.object({
+  crop: z.string().min(1, "Crop name is required"),
+  location: z.string().min(1, "Location is required"),
+  language: languageSchema,
+  summary: z.string().min(1, "Description is required"),
+});
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // put application routes here
-  // prefix all routes with /api
 
-  // use storage to perform CRUD operations on the storage interface
-  // e.g. storage.insertUser(user) or storage.getUserByUsername(username)
+  const requiredEnvVars = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "S3_BUCKET_NAME", "CLOUDFRONT_URL", "GEMINI_API_KEY"];
+  const missing = requiredEnvVars.filter((v) => !process.env[v]);
+  if (missing.length > 0) {
+    log(`WARNING: Missing environment variables: ${missing.join(", ")}`);
+  }
+
+  app.post("/api/diagnose", upload.array("images", 3), async (req, res) => {
+    try {
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        return res.status(400).json({ message: "At least one image is required" });
+      }
+
+      const fieldValidation = formFieldsSchema.safeParse(req.body);
+      if (!fieldValidation.success) {
+        return res.status(400).json({ message: fieldValidation.error.errors.map(e => e.message).join(", ") });
+      }
+
+      const { crop, location, language, summary } = fieldValidation.data;
+
+      log(`Uploading ${files.length} images to S3...`);
+      const imageUrls = await Promise.all(
+        files.map((file) => uploadToS3(file.buffer, file.originalname, file.mimetype))
+      );
+      log(`Images uploaded: ${imageUrls.join(", ")}`);
+
+      log("Calling disease detection API...");
+      const diagnosisResponse = await detectDisease({
+        images: imageUrls,
+        crop,
+        location,
+        language,
+        summary,
+      });
+      log("Disease detection complete");
+
+      let result = diagnosisResponse;
+      if (typeof result === "string") {
+        try {
+          result = JSON.parse(result);
+        } catch {
+          // keep as-is
+        }
+      }
+
+      if (result && typeof result === "object") {
+        const normalized: Record<string, any> = {};
+        for (const [key, value] of Object.entries(result)) {
+          const snakeKey = key
+            .replace(/([A-Z])/g, "_$1")
+            .toLowerCase()
+            .replace(/^_/, "")
+            .replace(/\s+/g, "_");
+          normalized[snakeKey] = value;
+        }
+        result = normalized;
+      }
+
+      return res.json(result);
+    } catch (error: any) {
+      log(`Diagnose error: ${error.message}`);
+      return res.status(500).json({ message: error.message || "Diagnosis failed" });
+    }
+  });
+
+  app.post("/api/treatment-plan", async (req, res) => {
+    try {
+      const validation = treatmentPlanRequestSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors.map(e => e.message).join(", ") });
+      }
+
+      const { diagnosis, crop, location, language, summary } = validation.data;
+
+      if (!process.env.GEMINI_API_KEY) {
+        return res.status(500).json({ message: "Gemini API key is not configured" });
+      }
+
+      log("Generating treatment plan with Gemini...");
+      const plan = await generateTreatmentPlan({
+        diagnosis,
+        crop,
+        location: location || "",
+        language,
+        summary: summary || "",
+      });
+      log("Treatment plan generated");
+
+      return res.json({ plan });
+    } catch (error: any) {
+      log(`Treatment plan error: ${error.message}`);
+      return res.status(500).json({ message: error.message || "Plan generation failed" });
+    }
+  });
 
   return httpServer;
 }
