@@ -94,6 +94,7 @@ export default defineAgent({
     const model = new google.beta.realtime.RealtimeModel({
       voice: 'Kore',
       apiKey: process.env.GEMINI_API_KEY,
+      model: 'gemini-2.5-flash-native-audio-preview',
       temperature: 0.7,
       inputAudioTranscription: {},
       outputAudioTranscription: {},
@@ -103,12 +104,13 @@ export default defineAgent({
       instructions: KHETSATHI_VOICE_PROMPT + `\n\nThe farmer's preferred language is ${language}. Start the conversation in ${language}, but if they speak in a different language, switch to match them.`,
       llm: model,
       allowInterruptions: true,
-      turnDetection: 'server',
     });
 
     const session = new voice.AgentSession({
-      userAwayTimeout: 300,
-    });
+      voiceOptions: {
+        userAwayTimeout: null,
+      },
+    } as any);
 
     session.on('user_input_transcribed' as any, (ev: any) => {
       if (ev.transcript && ev.isFinal) {
@@ -124,6 +126,37 @@ export default defineAgent({
       agent,
       room: ctx.room,
     });
+
+    // DIAGNOSTIC: Monkey-patch to trace audio flow
+    const activity = (session as any).activity;
+    if (activity) {
+      const realtimeSession = activity.realtimeSession;
+      if (realtimeSession) {
+        const origPushAudio = realtimeSession.pushAudio.bind(realtimeSession);
+        let pushCount = 0;
+        realtimeSession.pushAudio = (frame: any) => {
+          pushCount++;
+          if (pushCount === 1) {
+            console.log(`[voice-diag] FIRST pushAudio call! sampleRate=${frame.sampleRate}, samples=${frame.samplesPerChannel}`);
+          }
+          if (pushCount % 500 === 0) {
+            console.log(`[voice-diag] pushAudio called ${pushCount} times`);
+          }
+          return origPushAudio(frame);
+        };
+        console.log(`[voice-diag] Monkey-patched pushAudio on RealtimeSession`);
+      } else {
+        console.log(`[voice-diag] No realtimeSession found on activity`);
+      }
+
+      // Also check the audioStream deferred stream
+      const audioStream = activity.audioStream;
+      if (audioStream) {
+        console.log(`[voice-diag] AgentActivity.audioStream.isSourceSet = ${audioStream.isSourceSet}`);
+      }
+    } else {
+      console.log(`[voice-diag] No activity found on session`);
+    }
 
     await session.generateReply({
       instructions: languageGreeting,
