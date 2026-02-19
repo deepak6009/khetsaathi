@@ -16,7 +16,6 @@ You MUST detect the language the user is speaking in and ALWAYS respond in that 
 If the user speaks in Hindi, respond entirely in Hindi.
 If the user speaks in Telugu, respond entirely in Telugu.
 If the user speaks in English, respond entirely in English.
-If the user speaks in any other language, respond in that language.
 If the user switches languages mid-conversation, switch your responses to match.
 
 You are KhetSathi — think of yourself as a kind, experienced elder farmer who also happens to be a crop doctor. You genuinely care about the farmer and their family. You speak like a neighbor having chai together, not like a doctor in a clinic.
@@ -104,34 +103,40 @@ export default defineAgent({
           ? 'Greet the farmer warmly in Hindi and ask their name.'
           : 'Greet the farmer warmly in English and ask their name.';
 
-      log('Creating OpenAI RealtimeModel with gpt-4.1-mini');
+      log('Creating pipeline components: OpenAI STT + LLM (gpt-4.1-mini) + TTS');
 
-      const model = new openai.realtime.RealtimeModel({
+      const sttModel = new openai.STT({
         apiKey: process.env.OPENAI_API_KEY!,
-        model: 'gpt-4.1-mini',
-        voice: 'coral',
-        temperature: 0.7,
-        modalities: ['text', 'audio'],
-        turnDetection: {
-          type: 'server_vad',
-          threshold: 0.5,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 500,
-        },
+        model: 'whisper-1',
+        language: language === 'Telugu' ? 'te' : language === 'Hindi' ? 'hi' : 'en',
       });
 
-      log('RealtimeModel created');
+      const llmModel = new openai.LLM({
+        apiKey: process.env.OPENAI_API_KEY!,
+        model: 'gpt-4.1-mini',
+        temperature: 0.7,
+      });
+
+      const ttsModel = new openai.TTS({
+        apiKey: process.env.OPENAI_API_KEY!,
+        model: 'tts-1',
+        voice: 'coral',
+      });
+
+      log('Pipeline components created: STT(whisper-1), LLM(gpt-4.1-mini), TTS(tts-1/coral)');
 
       const agent = new voice.Agent({
         instructions: KHETSATHI_VOICE_PROMPT + `\n\nThe farmer's preferred language is ${language}. Start the conversation in ${language}, but if they speak in a different language, switch to match them.`,
-        llm: model,
+        llm: llmModel,
         allowInterruptions: true,
       });
 
-      log('Agent created');
+      log('Agent created with pipeline components');
 
       const session = new voice.AgentSession({
-        llm: model,
+        stt: sttModel,
+        llm: llmModel,
+        tts: ttsModel,
       });
 
       session.on('user_input_transcribed' as any, (ev: any) => {
@@ -152,7 +157,7 @@ export default defineAgent({
         log(`Session error event: ${JSON.stringify(ev)}`);
       });
 
-      log('Starting session...');
+      log('Starting session with pipeline approach...');
       await session.start({
         agent,
         room: ctx.room,

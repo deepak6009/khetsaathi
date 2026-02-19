@@ -1,0 +1,172 @@
+import os
+import json
+from dotenv import load_dotenv
+
+load_dotenv()
+
+from livekit.agents import (
+    JobContext,
+    WorkerOptions,
+    AutoSubscribe,
+    cli
+)
+from livekit.agents.voice import VoicePipelineAgent
+from livekit.plugins import sarvam, openai
+
+from agent.question_engine import QuestionEngine
+from agent.context_aggregator import ContextAggregator
+from agent.cache import ResponseCache
+# from services.mock_sensor import get_latest_sensor_snapshot
+
+
+# --------------------------------------------------
+# Vision agent input (PLUG-IN ONLY)
+# --------------------------------------------------
+VISION_OUTPUT = {
+    "crop_identified": "Rice",
+    "disease": "Leaf Blast",
+    "confidence": "High",
+    "severity": "Moderate",
+    "symptoms_observed": "Brown lesions on leaves",
+    "recommended_pesticide": "Tricyclazole",
+    "dosage": "0.6 g per liter",
+    "immediate_action": "Avoid overhead irrigation"
+}
+
+
+async def entrypoint(ctx: JobContext):
+    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
+
+    # --------------------------------------------------
+    # Language handling (console + prod safe)
+    # --------------------------------------------------
+    language = "en-IN"
+    try:
+        if ctx.room.metadata:
+            parsed = json.loads(ctx.room.metadata)
+            if isinstance(parsed, dict):
+                language = parsed.get("language", "en-IN")
+    except Exception:
+        pass
+
+    # --------------------------------------------------
+    # Core components
+    # --------------------------------------------------
+    question_engine = QuestionEngine(language)
+    questions = question_engine.get_questions()
+
+    context = ContextAggregator(language, VISION_OUTPUT)
+    cache = ResponseCache()
+
+    agent = VoicePipelineAgent(
+        vad=sarvam.VAD(),
+        stt=sarvam.STT(
+            language=language,
+            api_key=os.getenv("SARVAM_API_KEY")
+        ),
+        tts=sarvam.TTS(
+            language=language,
+            api_key=os.getenv("SARVAM_API_KEY")
+        ),
+        llm=openai.LLM(
+            api_key=os.getenv("OPENAI_API_KEY"),
+            model="gpt-4.1-mini"
+        ),
+        allow_barge_in=False  # TURN-BASED
+    )
+
+    # --------------------------------------------------
+    # State
+    # --------------------------------------------------
+    current_question_index = 0
+    awaiting_confirmation = False
+    last_answer = None
+
+    # --------------------------------------------------
+    # Helpers
+    # --------------------------------------------------
+    async def ask_next_question():
+        nonlocal current_question_index
+
+        if current_question_index >= len(questions):
+            await agent.say("Thank you. Processing your information now.")
+            await generate_final_response()
+            return
+
+        q = questions[current_question_index]
+        await agent.say(q["prompt"])
+
+    async def generate_final_response():
+        # sensor_data = get_latest_sensor_snapshot()
+        # aggregated_context = context.aggregate(sensor_data)
+
+        # cache_key = cache.make_key(aggregated_context)
+        response = cache.get(cache_key)
+
+        if not response:
+            response = await agent.llm.chat(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": open("prompts/system_prompt.txt").read()
+                    },
+                    {
+                        "role": "user",
+                        "content": str(aggregated_context)
+                    }
+                ]
+            )
+            cache.set(cache_key, response)
+
+        await agent.say(response)
+
+    # --------------------------------------------------
+    # USER SPEECH HANDLER (EVENT-DRIVEN)
+    # --------------------------------------------------
+    @agent.on("user_transcript")
+    async def on_user_transcript(ev):
+        nonlocal current_question_index, awaiting_confirmation, last_answer
+
+        text = ev.text.strip()
+        print("USER SAID:", text)
+
+        # Confirmation step
+        if awaiting_confirmation:
+            confirm = question_engine.normalize_answer(text)
+            if confirm == "yes":
+                q = questions[current_question_index]
+                context.update(q["key"], last_answer)
+                current_question_index += 1
+                awaiting_confirmation = False
+                await ask_next_question()
+            else:
+                awaiting_confirmation = False
+                await agent.say("Okay, please answer again.")
+                await ask_next_question()
+            return
+
+        # Normal answer step
+        q = questions[current_question_index]
+        normalized = question_engine.normalize_answer(text)
+
+        if normalized not in q["options"]:
+            await agent.say("I did not understand. Please answer again.")
+            return
+
+        last_answer = normalized
+        awaiting_confirmation = True
+        await agent.say(
+            f"You said {normalized}. Is that correct? Say yes or no."
+        )
+
+    # --------------------------------------------------
+    # Start interaction
+    # --------------------------------------------------
+    await agent.say("Welcome. I will ask you a few questions about your crop.")
+    await ask_next_question()
+
+
+if __name__ == "__main__":
+    cli.run_app(
+        WorkerOptions(entrypoint_fnc=entrypoint)
+    )
