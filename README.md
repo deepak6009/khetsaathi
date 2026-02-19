@@ -1,0 +1,196 @@
+# KhetSathi - AI Crop Doctor
+
+An AI-powered mobile-first agricultural assistant that helps farmers diagnose crop diseases, receive real-time treatment recommendations in their local language, and get structured 7-day treatment plans — all through a simple conversational interface.
+
+---
+
+## Problem Statement — PS7: Digital Doctor for Farmers
+
+**Objective:** Develop a mobile-first crop disease diagnosis system providing real-time, location-specific treatment advice in local dialects.
+
+### Functional Requirements
+
+- Image upload of diseased crops
+- Disease & pest detection
+- Location-based recommendations
+- Local dialect support (text + voice)
+- Pesticide & soil treatment guidance
+- Structured 7-day action plan
+- Diagnosis history tracking
+
+### Technical Requirements
+
+- Computer vision plant disease detection
+- Geolocation integration
+- Multilingual NLP engine
+- Crop & pesticide knowledge base
+- Low-bandwidth optimized mobile app
+- Scalable cloud infrastructure
+
+---
+
+## User Flow
+
+The application follows a **4-step wizard** to keep the experience simple for farmers:
+
+### Step 1 — Phone Number
+
+The farmer enters their phone number. The number is saved to the database — no OTP or complex sign-up required.
+
+### Step 2 — Language Selection
+
+The farmer picks their preferred language: **English**, **Telugu**, or **Hindi**. This language is used for the AI chat conversation.
+
+### Step 3 — Image Upload
+
+The farmer uploads **1 to 3 photos** of their affected crop. There are no extra form fields — no crop name, no location, no description. The AI will gather that information naturally through conversation in the next step.
+
+> **Image Compression:** Before the images are sent to the disease detection service (AWS Lambda), they are **compressed on the server** to reduce file size. This ensures faster uploads, lower bandwidth usage for farmers on slow connections, and efficient processing by the detection model.
+
+### Step 4 — AI Chat
+
+The farmer enters a conversational chat interface with an AI avatar. The chat flow works as follows:
+
+1. The AI greets the farmer in their chosen language and asks about the **crop name** and **location** naturally through conversation.
+2. A **background extraction agent** reads the conversation and pulls out the crop name and location as soon as the farmer mentions them.
+3. Once both are available, the system **automatically triggers the disease diagnosis** using the uploaded images.
+4. The AI shares the diagnosis results conversationally with the farmer.
+5. The AI asks if the farmer wants a **7-day treatment plan**.
+6. The farmer can choose the **plan language** independently from the chat language (e.g., chat in English but get the plan in Telugu).
+7. A **PDF treatment plan** is generated on the server, uploaded to cloud storage, and shown as a compact preview in the chat.
+8. The farmer can **regenerate the plan in a different language** at any time — each regeneration creates a new PDF.
+
+<!-- Screenshot: Full chat interface -->
+<!-- [PASTE CHAT INTERFACE SCREENSHOT HERE] -->
+
+---
+
+## Architecture Overview
+
+<!-- Architecture Diagram: High-level system architecture -->
+<!-- [PASTE HIGH-LEVEL ARCHITECTURE DIAGRAM HERE] -->
+
+---
+
+## Disease Detection — Lambda Architecture
+
+When the farmer's images are ready for diagnosis:
+
+1. Images are **compressed** on the server to reduce size.
+2. Compressed images along with the extracted crop name and location are sent to the **AWS Lambda** disease detection endpoint.
+3. The Lambda function runs the **computer vision model** to identify the disease.
+4. Results (disease name, confidence, description) are returned to the server and shared with the farmer through the chat.
+
+<!-- Architecture Diagram: Lambda disease detection flow -->
+<!-- [PASTE LAMBDA ARCHITECTURE DIAGRAM HERE] -->
+
+---
+
+## Chat Interface — AI Agents
+
+The chat system uses **two background agents** working alongside the main conversation to keep things seamless for the farmer.
+
+### Agent 1 — Extraction Agent
+
+<!-- Architecture Diagram: Agent 1 flow -->
+<!-- [PASTE AGENT 1 FLOW DIAGRAM HERE] -->
+
+### Agent 2 — Intent & Plan Agent
+
+<!-- Architecture Diagram: Agent 2 flow -->
+<!-- [PASTE AGENT 2 FLOW DIAGRAM HERE] -->
+
+---
+
+## PDF Treatment Plan Generation
+
+When the farmer requests a 7-day treatment plan:
+
+1. The AI generates a **structured 7-day treatment plan** using Google Gemini, tailored to the diagnosed disease, crop type, and location.
+2. The plan is formatted into a clean, readable layout with day-by-day actions, pesticide recommendations, and soil treatment guidance.
+3. **Puppeteer** (with Chromium) renders the plan into a **PDF document** on the server.
+4. The PDF is **uploaded to AWS S3** and served through CloudFront CDN.
+5. A compact **WhatsApp-style PDF preview box** appears in the chat with a download link.
+6. A **conversation summary** is generated by Gemini and saved alongside the PDF URL to the database for history tracking.
+7. If the farmer asks for the plan in a **different language**, the entire process repeats — a new plan is generated, a new PDF is created, and a new summary is saved.
+
+<!-- Screenshot: PDF preview in chat -->
+<!-- [PASTE PDF PREVIEW SCREENSHOT HERE] -->
+
+<!-- Screenshot: Sample generated PDF -->
+<!-- [PASTE SAMPLE PDF SCREENSHOT HERE] -->
+
+---
+
+## Voice-to-Voice Interaction
+
+For farmers who prefer speaking over typing, the app includes a **voice-to-voice** mode powered by LiveKit.
+
+### How It Works
+
+1. The farmer taps the **mic button** in the chat input area to enter voice mode.
+2. A **LiveKit room** is created and the farmer connects with a voice token.
+3. A separate **LiveKit Voice Agent** runs on the server using:
+   - **Google Gemini 2.0 Flash** (Realtime API) for understanding and responding in the farmer's language.
+   - **Silero VAD** (Voice Activity Detection) for detecting when the farmer starts and stops speaking, with interruption support.
+4. The farmer speaks naturally, and the AI responds in real-time voice in their chosen language.
+5. The voice panel shows a **live audio visualizer**, **mute** button, and **end call** button.
+
+<!-- Screenshot: Voice chat interface -->
+<!-- [PASTE VOICE CHAT SCREENSHOT HERE] -->
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React, TypeScript, Tailwind CSS, shadcn/ui, Framer Motion |
+| Backend | Express.js, Node.js |
+| AI | Google Gemini 2.0 Flash |
+| Disease Detection | AWS Lambda (Computer Vision Model) |
+| Database | Amazon DynamoDB |
+| Storage | AWS S3 + CloudFront CDN |
+| PDF Generation | Puppeteer + Chromium (server-side) |
+| Voice | LiveKit + Gemini Realtime API + Silero VAD |
+| Languages | English, Telugu, Hindi |
+
+---
+
+## Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `GEMINI_API_KEY` | Google Gemini AI API key |
+| `AWS_ACCESS_KEY_ID` | AWS credentials |
+| `AWS_SECRET_ACCESS_KEY` | AWS credentials |
+| `AWS_REGION` | AWS region (ap-south-1) |
+| `S3_BUCKET_NAME` | S3 bucket for images and PDFs |
+| `CLOUDFRONT_URL` | CloudFront CDN distribution URL |
+| `LIVEKIT_API_KEY` | LiveKit voice service API key |
+| `LIVEKIT_API_SECRET` | LiveKit voice service API secret |
+| `LIVEKIT_URL` | LiveKit server URL |
+| `SESSION_SECRET` | Express session secret |
+| `DATABASE_URL` | PostgreSQL connection string |
+
+---
+
+## Running the Project
+
+```bash
+npm install
+npm run dev
+```
+
+The application starts on **port 5000** with the Express backend and Vite frontend running together.
+
+---
+
+## Deployment
+
+The project is configured for **autoscale deployment** on Replit:
+
+```bash
+npm run build    # Builds the production bundle
+npm run start    # Starts the production server
+```
