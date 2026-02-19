@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Leaf, Upload, X, Camera, Phone, Globe, ArrowRight, Check, Send, Bot } from "lucide-react";
+import { Leaf, Upload, X, Camera, Phone, Globe, ArrowRight, Check, Send, Bot, Languages } from "lucide-react";
 import { TreatmentPlan } from "@/components/treatment-plan";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -18,7 +18,7 @@ interface ChatMessage {
   content: string;
 }
 
-type ChatPhase = "gathering" | "diagnosing" | "diagnosed" | "asking_plan" | "generating_plan" | "plan_ready";
+type ChatPhase = "gathering" | "diagnosing" | "diagnosed" | "asking_plan" | "awaiting_plan_language" | "generating_plan" | "plan_ready";
 
 export default function Home() {
   const { toast } = useToast();
@@ -41,6 +41,7 @@ export default function Home() {
   const [extractedLocation, setExtractedLocation] = useState<string | null>(null);
   const [diagnosis, setDiagnosis] = useState<Record<string, any> | null>(null);
   const [treatmentPlan, setTreatmentPlan] = useState<string | null>(null);
+  const [planLanguage, setPlanLanguage] = useState<Language | null>(null);
   const [diagnosisInProgress, setDiagnosisInProgress] = useState(false);
 
   const stepIndex = stepOrder.indexOf(currentStep);
@@ -175,8 +176,7 @@ export default function Home() {
       const data = await res.json();
       const curPhase = chatPhaseRef.current;
       if (data.wantsPlan && (curPhase === "diagnosed" || curPhase === "asking_plan")) {
-        setChatPhase("generating_plan");
-        triggerPlanGeneration(allMessages);
+        setChatPhase("awaiting_plan_language");
       }
     } catch {}
   }, []);
@@ -193,7 +193,8 @@ export default function Home() {
 
     try {
       const currentPhase = chatPhaseRef.current;
-      const isDiagnosedFirstReply = currentPhase === "diagnosed";
+      const hasDiagnosis = currentPhase === "diagnosed" || currentPhase === "asking_plan" || currentPhase === "awaiting_plan_language";
+      const isDiagnosedReply = currentPhase === "diagnosed" || currentPhase === "awaiting_plan_language";
 
       const chatRes = await fetch("/api/chat/message", {
         method: "POST",
@@ -201,9 +202,9 @@ export default function Home() {
         body: JSON.stringify({
           messages: updatedMessages,
           language,
-          diagnosis: (currentPhase === "diagnosed" || currentPhase === "asking_plan") ? diagnosisRef.current : null,
+          diagnosis: hasDiagnosis ? diagnosisRef.current : null,
           planGenerated: currentPhase === "plan_ready",
-          diagnosisAvailable: isDiagnosedFirstReply,
+          diagnosisAvailable: isDiagnosedReply,
         }),
       });
 
@@ -260,25 +261,25 @@ export default function Home() {
     }
   };
 
-  const triggerPlanGeneration = async (currentMessages: ChatMessage[]) => {
+  const triggerPlanGeneration = async (currentMessages: ChatMessage[], selectedLang: Language) => {
     try {
       setIsTyping(true);
       const currentDiagnosis = diagnosisRef.current;
-      const lang = languageRef.current;
       const urls = imageUrlsRef.current;
       const phone = phoneRef.current;
 
       const res = await fetch("/api/chat/generate-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: currentMessages, diagnosis: currentDiagnosis, language: lang, imageUrls: urls }),
+        body: JSON.stringify({ messages: currentMessages, diagnosis: currentDiagnosis, language: selectedLang, imageUrls: urls }),
       });
       if (!res.ok) throw new Error("Plan generation failed");
       const data = await res.json();
       setTreatmentPlan(data.plan);
+      setPlanLanguage(selectedLang);
       setChatPhase("plan_ready");
 
-      setMessages((prev) => [...prev, { role: "assistant", content: labels.planReady[lang] }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: labels.planReady[selectedLang] || labels.planReady.English }]);
 
       const conversationSummary = currentMessages
         .map((m) => `${m.role === "user" ? "Farmer" : "AI"}: ${m.content}`)
@@ -292,7 +293,7 @@ export default function Home() {
           conversationSummary,
           diagnosis: currentDiagnosis,
           treatmentPlan: data.plan,
-          language: lang,
+          language: selectedLang,
           imageUrls: urls,
         }),
       });
@@ -301,6 +302,17 @@ export default function Home() {
     } finally {
       setIsTyping(false);
     }
+  };
+
+  const handlePlanLanguageSelect = (selectedLang: Language) => {
+    setChatPhase("generating_plan");
+    triggerPlanGeneration(messages, selectedLang);
+  };
+
+  const regeneratePlanInLanguage = (selectedLang: Language) => {
+    setTreatmentPlan(null);
+    setChatPhase("generating_plan");
+    triggerPlanGeneration(messages, selectedLang);
   };
 
   const labels = {
@@ -321,6 +333,8 @@ export default function Home() {
     maxImages: { English: "Maximum 3 images allowed", Telugu: "గరిష్టంగా 3 చిత్రాలు అనుమతించబడతాయి", Hindi: "अधिकतम 3 छवियाँ अनुमत हैं" } as Record<Language, string>,
     typeMessage: { English: "Type your message...", Telugu: "మీ సందేశం టైప్ చేయండి...", Hindi: "अपना संदेश टाइप करें..." } as Record<Language, string>,
     planReady: { English: "Your 7-day treatment plan is ready! You can see it below.", Telugu: "మీ 7-రోజుల చికిత్స ప్రణాళిక సిద్ధంగా ఉంది! దిగువ చూడండి.", Hindi: "आपकी 7-दिन की उपचार योजना तैयार है! नीचे देखें." } as Record<Language, string>,
+    choosePlanLanguage: { English: "Choose language for your treatment plan", Telugu: "మీ చికిత్స ప్రణాళిక కోసం భాషను ఎంచుకోండి", Hindi: "अपनी उपचार योजना के लिए भाषा चुनें" } as Record<Language, string>,
+    getPlanIn: { English: "Get plan in another language", Telugu: "మరొక భాషలో ప్లాన్ పొందండి", Hindi: "दूसरी भाषा में प्लान पाएं" } as Record<Language, string>,
     analyzing: { English: "Analyzing your crop images...", Telugu: "మీ పంట చిత్రాలను విశ్లేషిస్తోంది...", Hindi: "आपकी फसल की तस्वीरों का विश्लेषण..." } as Record<Language, string>,
     footer: { English: "Built for Farmers", Telugu: "రైతుల కోసం", Hindi: "किसानों के लिए" } as Record<Language, string>,
   };
@@ -511,6 +525,30 @@ export default function Home() {
                   </div>
                 ))}
 
+                {chatPhase === "awaiting_plan_language" && (
+                  <div className="flex gap-2 justify-start">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
+                      <Languages className="w-4 h-4 text-primary" />
+                    </div>
+                    <Card className="max-w-[85%] p-3" data-testid="card-plan-language-picker">
+                      <p className="text-sm font-medium mb-2.5">{getLabel("choosePlanLanguage")}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {(["English", "Telugu", "Hindi"] as Language[]).map((lang) => (
+                          <Button
+                            key={lang}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePlanLanguageSelect(lang)}
+                            data-testid={`button-plan-lang-${lang.toLowerCase()}`}
+                          >
+                            {lang === "English" ? "English" : lang === "Telugu" ? "తెలుగు" : "हिन्दी"}
+                          </Button>
+                        ))}
+                      </div>
+                    </Card>
+                  </div>
+                )}
+
                 {isTyping && (
                   <div className="flex gap-2 justify-start">
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
@@ -529,9 +567,25 @@ export default function Home() {
                 <div ref={chatEndRef} />
               </div>
 
-              {treatmentPlan && (
-                <div className="px-4 pb-2">
-                  <TreatmentPlan plan={treatmentPlan} language={language} />
+              {treatmentPlan && planLanguage && (
+                <div className="px-4 pb-2 space-y-2">
+                  <TreatmentPlan plan={treatmentPlan} language={planLanguage} />
+                  <div className="flex items-center justify-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground">{getLabel("getPlanIn")}:</span>
+                    {(["English", "Telugu", "Hindi"] as Language[]).filter((l) => l !== planLanguage).map((lang) => (
+                      <Button
+                        key={lang}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => regeneratePlanInLanguage(lang)}
+                        disabled={isTyping}
+                        data-testid={`button-regen-plan-${lang.toLowerCase()}`}
+                      >
+                        <Languages className="w-3.5 h-3.5 mr-1" />
+                        {lang === "English" ? "English" : lang === "Telugu" ? "తెలుగు" : "हिन्दी"}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -544,10 +598,10 @@ export default function Home() {
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
                     placeholder={getLabel("typeMessage")}
                     className="flex-1"
-                    disabled={isTyping}
+                    disabled={isTyping || chatPhase === "awaiting_plan_language"}
                     data-testid="input-chat"
                   />
-                  <Button size="icon" onClick={sendMessage} disabled={!chatInput.trim() || isTyping} data-testid="button-send-chat">
+                  <Button size="icon" onClick={sendMessage} disabled={!chatInput.trim() || isTyping || chatPhase === "awaiting_plan_language"} data-testid="button-send-chat">
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>
