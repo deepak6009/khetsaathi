@@ -693,10 +693,14 @@ export default function Home() {
               <motion.div key="phone" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
                 <div className="space-y-6">
                   <div className="text-center space-y-4">
-                    <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto shadow-sm"
-                      style={{ backgroundColor: "#6BC30D15" }}>
-                      <PhoneIcon className="w-9 h-9" style={{ color: "#6BC30D" }} />
-                    </div>
+                    {profileImageUrl ? (
+                      <img src={profileImageUrl} alt="Profile" className="w-20 h-20 rounded-2xl object-cover mx-auto shadow-sm" />
+                    ) : (
+                      <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto shadow-sm"
+                        style={{ backgroundColor: "#6BC30D15" }}>
+                        <PhoneIcon className="w-9 h-9" style={{ color: "#6BC30D" }} />
+                      </div>
+                    )}
                     <div className="space-y-1.5">
                       <h2 className={`text-2xl font-bold text-gray-900 tracking-tight ${langSpace(language)}`}>{getLabel("enterPhone")}</h2>
                       <p className={`text-[15px] text-gray-500 ${langSpace(language)}`}>{getLabel("phoneHint")}</p>
@@ -897,7 +901,7 @@ export default function Home() {
           rightContent={
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-gray-400 active:opacity-70 text-xs font-medium"
+              className="flex items-center gap-1.5 text-red-500 active:opacity-70 text-xs font-medium"
               data-testid="button-logout"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -1097,7 +1101,7 @@ export default function Home() {
               </div>
             )}
 
-            <input ref={fileInputRef} type="file" accept="image/*" multiple capture="environment" onChange={handleFileSelect} className="hidden" data-testid="input-file-upload" />
+            <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" data-testid="input-file-upload" />
 
             <Button
               className="w-full gap-2 h-[52px] rounded-2xl text-base font-bold shadow-md hover:shadow-lg transition-shadow text-white border-0"
