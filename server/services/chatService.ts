@@ -18,7 +18,8 @@ If the user writes in Hindi, respond entirely in Hindi.
 If the user writes in Telugu, respond entirely in Telugu.
 If the user writes in English, respond entirely in English.
 If the user writes in any other language, respond in that language.
-If the user switches languages mid-conversation, switch your responses to match.
+If the user changes language during the conversation, adapt your replies to match their language. However, maintain the same script style used at the beginning of the conversation.
+For example, if the bot’s first message is in English script, continue using English script throughout. If the user speaks Telugu written in English letters (e.g., “meeru ela unnaru”), you should also reply in Telugu using English letters only — not in Telugu script.
 This applies to ALL your responses including greetings, questions, and information.
 Never mix languages in a single response unless the user does so first.`;
 
@@ -39,32 +40,16 @@ BASICS:
 
 CROP STAGE:
 4. How long ago did they plant this crop?
-5. Is the plant small, medium, or fully grown now? Are flowers or fruits coming?
-6. What variety or hybrid are they growing? Where did the seeds come from?
 
 SCOPE OF THE PROBLEM:
-7. How much of the field is affected — just one corner, or spread across the field?
-8. Is the damage only on the fruit, or do they see spots on leaves and stems too?
-9. When did they first notice this problem? Is it getting worse quickly or slowly?
-10. Do nearby farms have the same problem?
+5. How much of the field is affected — just one corner, or spread across the field?
 
 WEATHER & ENVIRONMENT:
-11. What has the weather been like recently — hot, humid, rainy?
-12. Has there been heavy rain in the last 7-10 days?
-
-WATER & IRRIGATION:
-13. How do they water — drip, sprinkler, flood, or rain-fed?
-14. When did they last water the field?
-15. Is water standing in the field or does the soil stay wet for long?
-
-SOIL:
-16. What color is the soil — red, black, brown, or sandy?
-17. Is the soil hard or soft?
+6. Is there any rain fall in the last 24 hours?
 
 CROP HISTORY:
-18. What was grown in this field last season?
-19. Have they applied any fertilizer? Which one — Urea, DAP, organic manure? When?
-20. Have they sprayed any pesticide or fungicide already? Which one?
+7. Have they applied any fertilizer? Which one — Urea, DAP, organic manure? When?
+8. Have they sprayed any pesticide or fungicide already? Which one?
 
 HOW TO TALK:
 - Ask ONLY ONE question per message. Never two. Never a list.
@@ -87,13 +72,7 @@ You now know what the disease is. But you MUST continue gathering the remaining 
 
 MANDATORY QUESTIONS STILL TO COVER (skip any already answered — ask ONE per message):
 - How much of the field is affected — just one corner or spread across?
-- Is the damage only on the fruit, or on leaves and stems too?
 - When did they first notice the problem? Getting worse quickly or slowly?
-- Do nearby farms have the same problem?
-- What has the weather been like — hot, humid, rainy? Heavy rain in last 7-10 days?
-- How do they water — drip, sprinkler, flood, or rain-fed?
-- When did they last water? Is water standing in the field?
-- What color is the soil — red, black, brown, sandy? Hard or soft?
 - What was grown in this field last season?
 - Have they applied any fertilizer? Which one, and when?
 - Have they sprayed any pesticide or fungicide already? Which one?
@@ -128,16 +107,17 @@ export async function generateChatReply(
   language: string,
   diagnosisData?: Record<string, any> | null,
   planGenerated?: boolean,
-  diagnosisAvailable?: boolean
+  diagnosisAvailable?: boolean,
 ): Promise<string> {
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   let systemContext: string;
 
   if (diagnosisAvailable && diagnosisData && !planGenerated) {
-    systemContext = DIAGNOSIS_PROMPT
-      .replace(/\{LANGUAGE\}/g, language)
-      .replace("{DIAGNOSIS}", JSON.stringify(diagnosisData));
+    systemContext = DIAGNOSIS_PROMPT.replace(/\{LANGUAGE\}/g, language).replace(
+      "{DIAGNOSIS}",
+      JSON.stringify(diagnosisData),
+    );
   } else if (planGenerated) {
     systemContext = PLAN_DONE_PROMPT.replace(/\{LANGUAGE\}/g, language);
   } else {
@@ -145,7 +125,7 @@ export async function generateChatReply(
   }
 
   const chatHistory = messages.map((m) => ({
-    role: m.role === "assistant" ? "model" as const : "user" as const,
+    role: m.role === "assistant" ? ("model" as const) : ("user" as const),
     parts: [{ text: m.content }],
   }));
 
@@ -163,7 +143,7 @@ export async function generateChatReply(
 }
 
 export async function extractCropAndLocation(
-  messages: ChatMessage[]
+  messages: ChatMessage[],
 ): Promise<ExtractedInfo> {
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
@@ -190,11 +170,15 @@ Rules:
   const text = result.response.text().trim();
 
   try {
-    const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const cleaned = text
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
     const parsed = JSON.parse(cleaned);
     return {
       crop: parsed.crop === "null" || !parsed.crop ? null : parsed.crop,
-      location: parsed.location === "null" || !parsed.location ? null : parsed.location,
+      location:
+        parsed.location === "null" || !parsed.location ? null : parsed.location,
     };
   } catch {
     return { crop: null, location: null };
@@ -202,7 +186,7 @@ Rules:
 }
 
 export async function detectPlanIntent(
-  messages: ChatMessage[]
+  messages: ChatMessage[],
 ): Promise<boolean> {
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
@@ -227,7 +211,7 @@ export async function generateConversationalPlan(
   messages: ChatMessage[],
   diagnosis: Record<string, any>,
   language: string,
-  imageUrls: string[]
+  imageUrls: string[],
 ): Promise<string> {
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
@@ -307,7 +291,7 @@ function getGreeting(language: string): string {
 
 export async function generateConversationSummary(
   messages: ChatMessage[],
-  diagnosis: Record<string, any>
+  diagnosis: Record<string, any>,
 ): Promise<string> {
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
