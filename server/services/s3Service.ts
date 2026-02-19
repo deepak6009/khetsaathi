@@ -28,8 +28,8 @@ export async function uploadToS3(
 
   const s3Client = getS3Client();
   const ext = path.extname(originalName) || ".jpg";
-  const sanitizedUserId = userId.replace(/[^a-zA-Z0-9+_-]/g, "");
-  const fileKey = `${sanitizedUserId}/${randomUUID()}${ext}`;
+  const last5 = userId.replace(/\D/g, "").slice(-5);
+  const fileKey = `${last5}/${randomUUID()}${ext}`;
 
   await s3Client.send(
     new PutObjectCommand({
