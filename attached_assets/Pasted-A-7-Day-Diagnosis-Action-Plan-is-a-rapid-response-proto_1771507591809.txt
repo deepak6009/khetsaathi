@@ -1,0 +1,52 @@
+A 7-Day Diagnosis & Action Plan is a rapid response protocol. When a farmer asks for this, they aren't looking for a textbook; they are looking for a triage strategy to stop the bleeding (crop loss) and start the recovery.
+
+To meet their expectations, the plan must include these four mandatory pillars:
+
+1. Immediate "Stop-Gap" Actions (Days 1–2)
+Before the chemicals even arrive, the farmer needs to know what to do right now to prevent the disease from jumping to the next row.
+
+Sanitation: Instruction to remove and burn (not compost) heavily infected fruits or leaves.
+
+Isolation: If the infection is localized, advise on "quarantine" measures (e.g., avoiding walking from the infected area to the healthy area).
+
+Water Management: Immediate shift in irrigation. If they use overhead sprinklers, the plan must tell them to stop and switch to ground-level or drip irrigation to keep foliage dry.
+
+2. The Prescription (Pesticides/Fungicides)
+This is the "medical" part of the plan. It must be hyper-specific to avoid further damage.
+
+Specific Product Names: Don't just say "fungicide." Give the Active Ingredient (e.g., Azoxystrobin or Copper-based sprays).
+
+Dosage & Dilution: Clear ratios (e.g., "Mix 2ml of product per 1 liter of water").
+
+Wait Times (PHI): The Pre-Harvest Interval. This is crucial. If the farmer sprays today, how many days must they wait before they can safely sell the fruit?
+
+3. The 7-Day Execution Calendar
+Farmers expect a daily "to-do" list. A sample structure looks like this:
+
+Day 1: Scouting and removal of infected tissue. Purchase of supplies.
+
+Day 2: First application of the prescribed spray (early morning or late evening).
+
+Day 3-4: Observation phase. Look for "drying up" of lesions. No water on leaves.
+
+Day 5: Nutrient boost. Often, a foliar spray of micronutrients is added here to help the plant's "immune system" recover.
+
+Day 7: Re-evaluation. Is the spread stopped? If not, a second dose or a different product may be needed.
+
+4. The Financial "Reality Check" (Budget)
+The farmer needs to know if the cure is more expensive than the loss.
+
+Cost per Acre: Break down the cost of the chemicals + labor for spraying.
+
+ROI (Return on Investment): A brief note on the estimated crop value saved versus the cost of treatment.
+
+Alternative Options: A "Low Budget" vs. "High Efficacy" option (e.g., organic Neem oil vs. expensive systemic fungicides).
+
+Mandatory "Safety & Compliance" Section
+Every 7-day plan must legally and ethically mention:
+
+PPE (Personal Protective Equipment): "Wear a mask, gloves, and long sleeves."
+
+Weather Warning: "Do not spray if rain is expected within 4 hours or if wind exceeds 10 km/h."
+
+Resistance Management: "Do not use this same chemical more than twice in a row, or the 'germs' will learn to fight it."

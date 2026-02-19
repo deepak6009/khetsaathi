@@ -212,9 +212,8 @@ export async function generateConversationalPlan(
     .map((m) => `${m.role === "user" ? "Farmer" : "Assistant"}: ${m.content}`)
     .join("\n");
 
-  const prompt = `Act as an experienced agricultural crop doctor.
-Based on the full conversation with the farmer (which includes their soil, weather, crop stage, fertilizer, and symptom details), the disease diagnosis, and images analyzed, generate a highly personalized 7-day treatment plan.
-Respond ENTIRELY in ${language} language.
+  const prompt = `You are an experienced agricultural crop doctor creating a 7-Day Treatment Plan for a farmer.
+Respond ENTIRELY in ${language} language. Use simple farmer-friendly language.
 
 **Full Conversation with Farmer:**
 ${conversation}
@@ -222,16 +221,51 @@ ${conversation}
 **Disease Diagnosis:**
 ${JSON.stringify(diagnosis, null, 2)}
 
-Use the farmer's specific context (soil type, weather, crop stage, fertilizers used, water conditions) to tailor the plan.
+Use ALL the context the farmer shared (soil type, weather, irrigation, crop stage, fertilizers, pesticides used) to make this plan hyper-specific to their situation.
 
-Please provide:
-1. A brief summary of the diagnosis
-2. Day-by-day treatment plan (Day 1 through Day 7)
-3. Each day should include specific actions, products to use (with dosage), and application methods
-4. Include preventive measures for future crops
-5. Any warnings or precautions
+Generate the plan in this EXACT structure using markdown:
 
-Format the response clearly with markdown headings and bullet points.`;
+## Diagnosis Summary
+- Disease name and severity in 2-3 simple sentences
+- What is causing it (in simple terms)
+
+## Immediate Actions (Day 1-2)
+- **Sanitation**: What infected parts to remove and how to dispose (burn, not compost)
+- **Isolation**: How to prevent spread to healthy plants
+- **Water Management**: Any immediate changes to irrigation needed
+
+## Prescription
+- **Product Name**: Specific active ingredient (e.g., Azoxystrobin, Copper Oxychloride)
+- **Dosage**: Exact mixing ratio (e.g., "2ml per 1 liter of water")
+- **How to Apply**: Spray method, time of day, coverage area
+- **Wait Time (PHI)**: How many days after spraying before fruits can be safely harvested/sold
+
+## 7-Day Action Calendar
+- **Day 1**: Scouting, removal of infected parts, purchase supplies
+- **Day 2**: First spray application (specify early morning or late evening)
+- **Day 3**: What to observe, keep foliage dry
+- **Day 4**: Check if lesions are drying, continue monitoring
+- **Day 5**: Nutrient boost — foliar spray of micronutrients to help plant recover
+- **Day 6**: Continue observation, check nearby plants
+- **Day 7**: Re-evaluate — is spread stopped? If not, what next step
+
+## Budget Estimate (per acre)
+- **Chemical Cost**: Approximate cost of products needed
+- **Low Budget Option**: Affordable alternative (e.g., Neem oil, organic options)
+- **High Efficacy Option**: Best commercial product with cost
+- **Expected Savings**: Estimated crop value saved vs treatment cost
+
+## Safety Rules
+- **Protective Gear**: Mask, gloves, long sleeves while spraying
+- **Weather**: Do not spray if rain expected within 4 hours or strong wind
+- **Resistance Warning**: Do not use the same chemical more than twice in a row
+
+## Prevention for Future
+- What to do differently next season to prevent this
+- Crop rotation advice
+- Seed selection tips
+
+Use bullet points throughout. Keep each point short and actionable. The farmer should be able to read one bullet and know exactly what to do.`;
 
   const result = await model.generateContent(prompt);
   return result.response.text();
