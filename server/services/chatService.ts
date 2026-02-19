@@ -42,16 +42,13 @@ CROP STAGE:
 
 SCOPE OF THE PROBLEM:
 5. How much of the field is affected — just one corner, or spread across the field?
-6. Is the damage only on the fruit, or do they see spots on leaves and stems too?
-7. When did they first notice this problem? Is it getting worse quickly or slowly?
 
 WEATHER & ENVIRONMENT:
-8. Is there any rain fall in the last 24 hours?
+6. Is there any rain fall in the last 24 hours?
 
 CROP HISTORY:
-9. What was grown in this field last season?
-10. Have they applied any fertilizer? Which one — Urea, DAP, organic manure? When?
-11. Have they sprayed any pesticide or fungicide already? Which one?
+7. Have they applied any fertilizer? Which one — Urea, DAP, organic manure? When?
+8. Have they sprayed any pesticide or fungicide already? Which one?
 
 HOW TO TALK:
 - Ask ONLY ONE question per message. Never two. Never a list.
@@ -74,13 +71,7 @@ You now know what the disease is. But you MUST continue gathering the remaining 
 
 MANDATORY QUESTIONS STILL TO COVER (skip any already answered — ask ONE per message):
 - How much of the field is affected — just one corner or spread across?
-- Is the damage only on the fruit, or on leaves and stems too?
 - When did they first notice the problem? Getting worse quickly or slowly?
-- Do nearby farms have the same problem?
-- What has the weather been like — hot, humid, rainy? Heavy rain in last 7-10 days?
-- How do they water — drip, sprinkler, flood, or rain-fed?
-- When did they last water? Is water standing in the field?
-- What color is the soil — red, black, brown, sandy? Hard or soft?
 - What was grown in this field last season?
 - Have they applied any fertilizer? Which one, and when?
 - Have they sprayed any pesticide or fungicide already? Which one?
