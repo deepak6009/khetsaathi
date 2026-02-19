@@ -59,10 +59,11 @@ export default function HistoryPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigate("/")}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-primary-foreground/80 active:bg-white/10 flex-shrink-0"
+              className="flex items-center gap-1 text-primary-foreground/80 text-sm active:bg-white/10 rounded-md px-1 py-1"
               data-testid="button-back"
             >
               <ChevronLeft className="w-5 h-5" />
+              <span className="text-xs font-medium">{getLabel("back")}</span>
             </button>
             <img
               src={logoImage}
