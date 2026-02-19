@@ -135,9 +135,9 @@ export default defineAgent({
       log('Agent created with pipeline components');
 
       const vadModel = silero.VAD.load({
-        activationThreshold: 0.65,
-        minSpeechDuration: 200,
-        minSilenceDuration: 1000,
+        activationThreshold: 0.85,
+        minSpeechDuration: 300,
+        minSilenceDuration: 1200,
       });
 
       log('VAD (Silero) loaded with noise-resistant settings');
