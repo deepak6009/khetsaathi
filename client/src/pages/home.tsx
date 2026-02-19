@@ -513,7 +513,7 @@ export default function Home() {
                   </div>
                 ))}
 
-                {(isTyping || diagnosisInProgress) && (
+                {isTyping && (
                   <div className="flex gap-2 justify-start">
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
                       <Bot className="w-4 h-4 text-primary" />
@@ -523,9 +523,6 @@ export default function Home() {
                         <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
                         <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
                         <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                        {diagnosisInProgress && (
-                          <span className="text-xs text-muted-foreground ml-2">{getLabel("analyzing")}</span>
-                        )}
                       </div>
                     </div>
                   </div>
