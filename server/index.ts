@@ -2,7 +2,6 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { setupVoiceWebSocket } from "./voice-handler";
 
 const app = express();
 const httpServer = createServer(app);
@@ -99,8 +98,6 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
-      setupVoiceWebSocket(httpServer);
-      log("Voice WebSocket handler attached");
     },
   );
 })();

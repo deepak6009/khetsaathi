@@ -11,6 +11,7 @@ import { uploadPdfToS3 } from "./services/s3Service";
 import { phoneSchema, languageSchema } from "@shared/schema";
 import { z } from "zod";
 import { log } from "./index";
+import { AccessToken, RoomServiceClient } from "livekit-server-sdk";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -363,6 +364,64 @@ export async function registerRoutes(
     } catch (error: any) {
       log(`History fetch error: ${error.message}`);
       return res.status(500).json({ message: "Failed to fetch history" });
+    }
+  });
+
+  app.post("/api/livekit/token", async (req, res) => {
+    try {
+      const schema = z.object({
+        phone: z.string().min(10),
+        language: z.string(),
+        imageUrls: z.array(z.string()),
+      });
+      const validation = schema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors.map(e => e.message).join(", ") });
+      }
+
+      const { phone, language, imageUrls } = validation.data;
+
+      const apiKey = process.env.LIVEKIT_API_KEY;
+      const apiSecret = process.env.LIVEKIT_API_SECRET;
+      const livekitUrl = process.env.LIVEKIT_URL;
+
+      if (!apiKey || !apiSecret || !livekitUrl) {
+        return res.status(500).json({ message: "LiveKit not configured" });
+      }
+
+      const roomName = `khetsaathi-${phone}-${Date.now()}`;
+      const participantIdentity = `farmer-${phone}`;
+      const roomMetadata = JSON.stringify({ phone, language, imageUrls });
+
+      const roomService = new RoomServiceClient(livekitUrl, apiKey, apiSecret);
+      await roomService.createRoom({
+        name: roomName,
+        metadata: roomMetadata,
+        emptyTimeout: 300,
+        maxParticipants: 2,
+      });
+
+      const token = new AccessToken(apiKey, apiSecret, {
+        identity: participantIdentity,
+      });
+      token.addGrant({
+        roomJoin: true,
+        room: roomName,
+        canPublish: true,
+        canSubscribe: true,
+      });
+
+      const jwt = await token.toJwt();
+
+      log(`LiveKit token generated for ${phone}, room: ${roomName}`);
+      return res.json({
+        token: jwt,
+        url: livekitUrl,
+        roomName,
+      });
+    } catch (error: any) {
+      log(`LiveKit token error: ${error.message}`);
+      return res.status(500).json({ message: "Failed to generate token" });
     }
   });
 
