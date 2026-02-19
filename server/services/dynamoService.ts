@@ -94,6 +94,7 @@ async function ensureUsercasesTable(): Promise<void> {
 export interface DynamoUser {
   phone: string;
   language?: string;
+  profileImageUrl?: string;
   createdAt: string;
 }
 
@@ -155,6 +156,18 @@ export async function getUserFromDynamo(phone: string): Promise<DynamoUser | und
   );
 
   return result.Item as DynamoUser | undefined;
+}
+
+export async function updateUserProfileImage(phone: string, profileImageUrl: string): Promise<void> {
+  await ensureKhetSathiUsersTable();
+  await docClient.send(
+    new UpdateCommand({
+      TableName: KHET_SATHI_USERS_TABLE,
+      Key: { phone },
+      UpdateExpression: "SET profileImageUrl = :url",
+      ExpressionAttributeValues: { ":url": profileImageUrl },
+    })
+  );
 }
 
 export async function saveUserCase(data: UserCaseData): Promise<UserCaseData> {

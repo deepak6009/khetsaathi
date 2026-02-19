@@ -58,6 +58,8 @@ Agricultural AI assistant where farmers upload crop images and receive disease d
 ## API Endpoints
 - `POST /api/register-phone` - Register phone number to DynamoDB
 - `POST /api/set-language` - Save user's language preference to DynamoDB
+- `POST /api/upload-selfie` - Multipart: upload selfie to S3, save profileImageUrl to DynamoDB
+- `GET /api/user-profile/:phone` - Get user profile including profileImageUrl
 - `POST /api/upload-images` - Multipart: upload 1-6 images to S3, returns CloudFront URLs
 - `GET /api/chat/greeting?language=X` - Get AI greeting in user's language
 - `POST /api/chat/message` - Send conversation + get AI reply
@@ -69,7 +71,7 @@ Agricultural AI assistant where farmers upload crop images and receive disease d
 - `GET /api/history/:phone` - Get user's diagnosis history
 
 ## DynamoDB Tables
-- **KhetSathiUsers** (region: ap-south-1): PK=phone, Attributes: phone, language, createdAt
+- **KhetSathiUsers** (region: ap-south-1): PK=phone, Attributes: phone, language, profileImageUrl, createdAt
 - **usercases** (region: ap-south-1): PK=phone, SK=timestamp, Attributes: conversationSummary, diagnosis, treatmentPlan, language, imageUrls
 - **chatsummary** (region: ap-south-1): PK=phone, SK=timestamp, Attributes: conversationSummary, pdfUrl, language, diagnosis, imageUrls
 
@@ -88,7 +90,7 @@ Agricultural AI assistant where farmers upload crop images and receive disease d
 
 ## Design Decisions
 - Mobile-first SaaS architecture with dashboard as central hub
-- Onboarding flow: Language → Phone → Welcome → Dashboard
+- Onboarding flow: Language → Phone → Selfie (optional) → Welcome → Dashboard
 - Camera/photo capture is the hero action on dashboard
 - Recent diagnoses shown on dashboard for quick reference
 - All navigation buttons show localized "Back" text in selected language

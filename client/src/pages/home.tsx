@@ -15,9 +15,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import VoiceChat from "@/components/voice-chat";
 import logoImage from "@assets/Blue_and_Green_Farmers_Instagram_Post_(2)_1771525392133.png";
+import farmerRefImage from "@assets/image_1771528574027.png";
 
 type AppScreen = "onboarding" | "dashboard" | "capture" | "chat";
-type OnboardingStep = "language" | "phone" | "welcome";
+type OnboardingStep = "language" | "phone" | "selfie" | "welcome";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -90,6 +91,15 @@ const labels = {
   greeting: { English: "Good Morning!", Telugu: "శుభోదయం!", Hindi: "सुप्रभात!" } as Record<Language, string>,
   quickActions: { English: "Quick Actions", Telugu: "త్వరిత చర్యలు", Hindi: "त्वरित कार्य" } as Record<Language, string>,
   swipeToStart: { English: "Swipe to get started", Telugu: "ప్రారంభించడానికి స్వైప్ చేయండి", Hindi: "शुरू करने के लिए स्वाइप करें" } as Record<Language, string>,
+  stepSelfie: { English: "Photo", Telugu: "ఫోటో", Hindi: "फोटो" } as Record<Language, string>,
+  selfieTitle: { English: "Show us your smile!", Telugu: "మీ చిరునవ్వు చూపించండి!", Hindi: "अपनी मुस्कान दिखाइए!" } as Record<Language, string>,
+  selfieDesc: { English: "Take a selfie so your AI crop doctor can recognise you", Telugu: "AI పంట వైద్యుడు మిమ్మల్ని గుర్తించేలా సెల్ఫీ తీసుకోండి", Hindi: "AI फसल डॉक्टर आपको पहचान सके इसके लिए सेल्फी लें" } as Record<Language, string>,
+  selfieHint: { English: "Smile like this farmer!", Telugu: "ఈ రైతులా నవ్వండి!", Hindi: "इस किसान की तरह मुस्कुराइए!" } as Record<Language, string>,
+  takeSelfie: { English: "Take a Selfie", Telugu: "సెల్ఫీ తీసుకోండి", Hindi: "सेल्फी लें" } as Record<Language, string>,
+  retakeSelfie: { English: "Retake", Telugu: "మళ్ళీ తీయండి", Hindi: "दोबारा लें" } as Record<Language, string>,
+  skipSelfie: { English: "Skip for now", Telugu: "ప్రస్తుతం వదిలివేయండి", Hindi: "अभी छोड़ें" } as Record<Language, string>,
+  uploadingSelfie: { English: "Saving your photo...", Telugu: "మీ ఫోటో సేవ్ అవుతోంది...", Hindi: "आपकी फोटो सेव हो रही है..." } as Record<Language, string>,
+  looksGreat: { English: "Looking great!", Telugu: "చాలా బాగుంది!", Hindi: "बहुत अच्छा!" } as Record<Language, string>,
 };
 
 function AppHeader({
@@ -168,6 +178,11 @@ export default function Home() {
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [recentHistory, setRecentHistory] = useState<HistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
+  const [selfieFile, setSelfieFile] = useState<File | null>(null);
+  const [selfieUploading, setSelfieUploading] = useState(false);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(localStorage.getItem("ks_profileImage") || null);
+  const selfieInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -176,7 +191,21 @@ export default function Home() {
   useEffect(() => {
     if (isReturningUser && screen === "dashboard") {
       fetchRecentHistory(savedPhone);
+      fetchUserProfile(savedPhone);
     }
+  }, []);
+
+  const fetchUserProfile = useCallback(async (phone: string) => {
+    if (!phone) return;
+    try {
+      const res = await fetch(`/api/user-profile/${encodeURIComponent(phone)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.user?.profileImageUrl) {
+        setProfileImageUrl(data.user.profileImageUrl);
+        localStorage.setItem("ks_profileImage", data.user.profileImageUrl);
+      }
+    } catch {}
   }, []);
 
   const fetchRecentHistory = useCallback(async (phone: string) => {
@@ -256,7 +285,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: phoneNumber, language }),
       }).catch(() => {});
-      setOnboardingStep("welcome");
+      setOnboardingStep("selfie");
     },
     onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
   });
@@ -461,10 +490,44 @@ export default function Home() {
     setIsVoiceActive(false);
   };
 
+  const handleSelfieSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (selfiePreview) URL.revokeObjectURL(selfiePreview);
+    setSelfieFile(file);
+    setSelfiePreview(URL.createObjectURL(file));
+    if (selfieInputRef.current) selfieInputRef.current.value = "";
+  };
+
+  const uploadSelfie = async () => {
+    if (!selfieFile) return;
+    setSelfieUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("selfie", selfieFile);
+      formData.append("phone", phoneNumber);
+      const res = await fetch("/api/upload-selfie", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
+      setProfileImageUrl(data.profileImageUrl);
+      localStorage.setItem("ks_profileImage", data.profileImageUrl);
+      setOnboardingStep("welcome");
+    } catch {
+      toast({ title: "Could not save photo", variant: "destructive" });
+    } finally {
+      setSelfieUploading(false);
+    }
+  };
+
+  const skipSelfie = () => {
+    setOnboardingStep("welcome");
+  };
+
   const goToDashboard = () => {
     setScreen("dashboard");
     resetChatState();
     fetchRecentHistory(phoneNumber);
+    fetchUserProfile(phoneNumber);
   };
 
   const goToCapture = () => {
@@ -476,9 +539,13 @@ export default function Home() {
     localStorage.removeItem("ks_phone");
     localStorage.removeItem("ks_language");
     localStorage.removeItem("ks_location");
+    localStorage.removeItem("ks_profileImage");
     setPhoneNumber("");
     setLanguage("English");
     setUserLocation(null);
+    setProfileImageUrl(null);
+    setSelfiePreview(null);
+    setSelfieFile(null);
     resetChatState();
     setRecentHistory([]);
     setOnboardingStep("language");
@@ -503,8 +570,10 @@ export default function Home() {
     return evening[language] || "Good Evening!";
   };
 
-  const onboardingSteps: OnboardingStep[] = ["language", "phone", "welcome"];
+  const onboardingSteps: OnboardingStep[] = ["language", "phone", "selfie", "welcome"];
+  const visibleSteps: OnboardingStep[] = ["language", "phone", "selfie"];
   const currentOnboardingIdx = onboardingSteps.indexOf(onboardingStep);
+  const currentVisibleIdx = visibleSteps.indexOf(onboardingStep);
 
   if (screen === "onboarding") {
     const isDarkScreen = onboardingStep === "welcome";
@@ -525,9 +594,10 @@ export default function Home() {
         {onboardingStep !== "welcome" && (
           <div className="max-w-lg mx-auto w-full px-5 pt-5">
             <div className="flex items-center justify-center">
-              {onboardingSteps.filter(s => s !== "welcome").map((step, idx) => {
-                const isActive = idx === currentOnboardingIdx;
-                const isDone = idx < currentOnboardingIdx;
+              {visibleSteps.map((step, idx) => {
+                const isActive = idx === currentVisibleIdx;
+                const isDone = idx < currentVisibleIdx;
+                const stepLabelKey = step === "language" ? "stepLanguage" : step === "phone" ? "stepPhone" : "stepSelfie";
                 return (
                   <div key={step} className="flex items-center">
                     <button
@@ -547,12 +617,12 @@ export default function Home() {
                         {isDone ? <Check className="w-4 h-4" /> : idx + 1}
                       </div>
                       <span className={`text-[13px] font-semibold ${langSpace(language)} ${isActive || isDone ? "text-gray-900" : "text-gray-400"}`}>
-                        {getLabel(step === "language" ? "stepLanguage" : "stepPhone")}
+                        {getLabel(stepLabelKey)}
                       </span>
                     </button>
-                    {idx < 1 && (
-                      <div className={`w-12 h-[2px] mx-4 rounded-full transition-colors duration-300 ${idx < currentOnboardingIdx ? "" : "bg-gray-200"}`}
-                        style={idx < currentOnboardingIdx ? { backgroundColor: "#6BC30D" } : undefined}
+                    {idx < visibleSteps.length - 1 && (
+                      <div className={`w-10 h-[2px] mx-3 rounded-full transition-colors duration-300 ${idx < currentVisibleIdx ? "" : "bg-gray-200"}`}
+                        style={idx < currentVisibleIdx ? { backgroundColor: "#6BC30D" } : undefined}
                       />
                     )}
                   </div>
@@ -661,6 +731,94 @@ export default function Home() {
               </motion.div>
             )}
 
+            {onboardingStep === "selfie" && (
+              <motion.div key="selfie" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
+                <div className="space-y-5">
+                  <div className="text-center space-y-2">
+                    <h2 className={`text-2xl font-bold text-gray-900 tracking-tight ${langSpace(language)}`}>{getLabel("selfieTitle")}</h2>
+                    <p className={`text-[15px] text-gray-500 ${langSpace(language)}`}>{getLabel("selfieDesc")}</p>
+                  </div>
+
+                  <div className="relative w-full max-w-[280px] mx-auto">
+                    {selfiePreview ? (
+                      <div className="relative">
+                        <img src={selfiePreview} alt="Your selfie" className="w-full aspect-square rounded-3xl object-cover shadow-lg border-4 border-white" data-testid="img-selfie-preview" />
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full text-[13px] font-bold text-white shadow-md" style={{ backgroundColor: "#6BC30D" }}>
+                          {getLabel("looksGreat")}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <img src={farmerRefImage} alt="Smiling farmer" className="w-full aspect-square rounded-3xl object-cover shadow-lg border-4 border-white opacity-90" data-testid="img-farmer-reference" />
+                        <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                        <div className="absolute bottom-4 left-0 right-0 text-center">
+                          <p className={`text-white text-[14px] font-bold drop-shadow-lg ${langSpace(language)}`}>{getLabel("selfieHint")}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <input
+                    ref={selfieInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="user"
+                    onChange={handleSelfieSelect}
+                    className="hidden"
+                    data-testid="input-selfie-capture"
+                  />
+
+                  <div className="space-y-3 pt-2">
+                    {selfiePreview ? (
+                      <>
+                        <Button
+                          className="w-full gap-2 h-[52px] rounded-2xl text-base font-bold shadow-md hover:shadow-lg transition-shadow text-white border-0"
+                          style={{ backgroundColor: "#6BC30D" }}
+                          size="lg"
+                          onClick={uploadSelfie}
+                          disabled={selfieUploading}
+                          data-testid="button-continue-selfie"
+                        >
+                          {selfieUploading ? (
+                            <><Loader2 className="w-5 h-5 animate-spin" /><span className={langSpace(language)}>{getLabel("uploadingSelfie")}</span></>
+                          ) : (
+                            <><span className={langSpace(language)}>{getLabel("continueBtn")}</span> <ArrowRight className="w-4 h-4" /></>
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full gap-2 h-11 rounded-xl text-[14px] font-semibold"
+                          onClick={() => selfieInputRef.current?.click()}
+                          disabled={selfieUploading}
+                          data-testid="button-retake-selfie"
+                        >
+                          <RotateCcw className="w-4 h-4" /><span className={langSpaceTight(language)}>{getLabel("retakeSelfie")}</span>
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        className="w-full gap-2 h-[52px] rounded-2xl text-base font-bold shadow-md hover:shadow-lg transition-shadow text-white border-0"
+                        style={{ backgroundColor: "#6BC30D" }}
+                        size="lg"
+                        onClick={() => selfieInputRef.current?.click()}
+                        data-testid="button-take-selfie"
+                      >
+                        <Camera className="w-5 h-5" /><span className={langSpace(language)}>{getLabel("takeSelfie")}</span>
+                      </Button>
+                    )}
+                    <button
+                      onClick={skipSelfie}
+                      className={`w-full text-center text-[14px] font-medium text-gray-400 py-2 active:text-gray-500 ${langSpace(language)}`}
+                      disabled={selfieUploading}
+                      data-testid="button-skip-selfie"
+                    >
+                      {getLabel("skipSelfie")}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             {onboardingStep === "welcome" && (
               <motion.div key="welcome" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
                 <div className="flex flex-col items-center text-center space-y-6">
@@ -750,9 +908,13 @@ export default function Home() {
 
         <main className="flex-1 max-w-lg mx-auto w-full px-4 py-5 space-y-5">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ backgroundColor: "#6BC30D15" }}>
-              <User className="w-5 h-5" style={{ color: "#6BC30D" }} />
-            </div>
+            {profileImageUrl ? (
+              <img src={profileImageUrl} alt="Profile" className="w-11 h-11 rounded-full object-cover border-2 border-white shadow-sm" data-testid="img-profile-avatar" />
+            ) : (
+              <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ backgroundColor: "#6BC30D15" }}>
+                <User className="w-5 h-5" style={{ color: "#6BC30D" }} />
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className={`text-[11px] text-gray-400 font-medium ${langSpaceTight(language)}`}>{getGreeting()}</p>
               <p className="text-[15px] font-bold text-gray-900 leading-tight">{formatPhone(phoneNumber)}</p>
