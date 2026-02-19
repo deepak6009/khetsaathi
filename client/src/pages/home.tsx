@@ -91,6 +91,10 @@ const labels = {
   greeting: { English: "Good Morning!", Telugu: "శుభోదయం!", Hindi: "सुप्रभात!" } as Record<Language, string>,
   quickActions: { English: "Quick Actions", Telugu: "త్వరిత చర్యలు", Hindi: "त्वरित कार्य" } as Record<Language, string>,
   swipeToStart: { English: "Swipe to get started", Telugu: "ప్రారంభించడానికి స్వైప్ చేయండి", Hindi: "शुरू करने के लिए स्वाइप करें" } as Record<Language, string>,
+  yourCropPhotos: { English: "Your Crop Photos", Telugu: "మీ పంట ఫోటోలు", Hindi: "आपकी फसल की फोटो" } as Record<Language, string>,
+  analyzingDisease: { English: "Analyzing disease...", Telugu: "వ్యాధి విశ్లేషిస్తోంది...", Hindi: "रोग का विश्लेषण हो रहा है..." } as Record<Language, string>,
+  diseaseDetected: { English: "Disease detected", Telugu: "వ్యాధి గుర్తించబడింది", Hindi: "रोग का पता चला" } as Record<Language, string>,
+  chatWhileProcessing: { English: "Chat while we analyze", Telugu: "విశ్లేషణ సమయంలో చాట్ చేయండి", Hindi: "विश्लेषण के दौरान चैट करें" } as Record<Language, string>,
   stepSelfie: { English: "Photo", Telugu: "ఫోటో", Hindi: "फोटो" } as Record<Language, string>,
   selfieTitle: { English: "Show us your smile!", Telugu: "మీ చిరునవ్వు చూపించండి!", Hindi: "अपनी मुस्कान दिखाइए!" } as Record<Language, string>,
   selfieDesc: { English: "Take a selfie so your AI crop doctor can recognise you", Telugu: "AI పంట వైద్యుడు మిమ్మల్ని గుర్తించేలా సెల్ఫీ తీసుకోండి", Hindi: "AI फसल डॉक्टर आपको पहचान सके इसके लिए सेल्फी लें" } as Record<Language, string>,
@@ -1153,6 +1157,38 @@ export default function Home() {
 
       <main className="flex-1 flex flex-col">
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3" data-testid="chat-messages">
+          {imageUrls.length > 0 && (
+            <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-3 mb-1" data-testid="card-uploaded-images">
+              <div className="flex items-center gap-2 mb-2.5">
+                <Camera className="w-4 h-4" style={{ color: "#6BC30D" }} />
+                <span className={`text-[13px] font-semibold text-gray-800 ${langSpaceTight(language)}`}>{getLabel("yourCropPhotos")}</span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {imageUrls.map((url, idx) => (
+                  <img key={idx} src={url} alt={`Crop ${idx + 1}`} className="w-20 h-20 rounded-xl object-cover flex-shrink-0 border border-gray-100 shadow-sm" data-testid={`img-chat-upload-${idx}`} />
+                ))}
+              </div>
+              <div className="mt-2.5 flex items-center gap-2">
+                {diagnosisInProgress || chatPhase === "diagnosing" ? (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                    <span className={`text-[12px] font-semibold text-amber-700 ${langSpaceTight(language)}`}>{getLabel("analyzingDisease")}</span>
+                  </div>
+                ) : diagnosis ? (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border" style={{ backgroundColor: "#6BC30D10", borderColor: "#6BC30D30" }}>
+                    <Check className="w-3.5 h-3.5" style={{ color: "#6BC30D" }} />
+                    <span className={`text-[12px] font-semibold ${langSpaceTight(language)}`} style={{ color: "#4a9a08" }}>{getLabel("diseaseDetected")}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200">
+                    <Mic className="w-3.5 h-3.5 text-blue-600" />
+                    <span className={`text-[12px] font-semibold text-blue-700 ${langSpaceTight(language)}`}>{getLabel("chatWhileProcessing")}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               {msg.role === "assistant" && (
