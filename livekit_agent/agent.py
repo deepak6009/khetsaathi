@@ -226,10 +226,13 @@ async def entrypoint(ctx: JobContext):
 
     lang_config = LANGUAGE_MAP.get(language, LANGUAGE_MAP["English"])
 
+    stt_prompt = "Agriculture, farming, crop disease, pesticide, fertilizer, tomato, rice, wheat, cotton, paddy, chilli, brinjal, mango, banana, sugarcane, groundnut, village, district, mandal"
+
     session = AgentSession(
         stt=sarvam.STT(
             language=lang_config["stt"],
-            model="saarika:v2",
+            model="saarika:v2.5",
+            prompt=stt_prompt,
         ),
         llm=google.LLM(
             model="gemini-2.0-flash",
@@ -237,6 +240,8 @@ async def entrypoint(ctx: JobContext):
         tts=sarvam.TTS(
             target_language_code=lang_config["tts"],
             model="bulbul:v2",
+            pace=0.9,
+            enable_preprocessing=True,
         ),
         turn_detection=agents.turn_detector.EOUModel(),
     )
