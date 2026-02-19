@@ -4,9 +4,9 @@ import multer from "multer";
 import { uploadToS3 } from "./services/s3Service";
 import { detectDisease } from "./services/diseaseService";
 import { generateTreatmentPlan } from "./services/geminiService";
-import { treatmentPlanRequestSchema, languageSchema, phoneSchema, otpVerifySchema } from "@shared/schema";
+import { saveUserToDynamo } from "./services/dynamoService";
+import { treatmentPlanRequestSchema, languageSchema, phoneSchema } from "@shared/schema";
 import { z } from "zod";
-import { storage } from "./storage";
 import { log } from "./index";
 
 const upload = multer({
@@ -28,21 +28,17 @@ const formFieldsSchema = z.object({
   summary: z.string().min(1, "Description is required"),
 });
 
-function generateOtpCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  const requiredEnvVars = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "S3_BUCKET_NAME", "CLOUDFRONT_URL", "GEMINI_API_KEY"];
+  const requiredEnvVars = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "S3_BUCKET_NAME", "CLOUDFRONT_URL", "GEMINI_API_KEY"];
   const missing = requiredEnvVars.filter((v) => !process.env[v]);
   if (missing.length > 0) {
     log(`WARNING: Missing environment variables: ${missing.join(", ")}`);
   }
 
-  app.post("/api/send-otp", async (req, res) => {
+  app.post("/api/register-phone", async (req, res) => {
     try {
       const validation = phoneSchema.safeParse(req.body);
       if (!validation.success) {
@@ -50,64 +46,13 @@ export async function registerRoutes(
       }
 
       const { phone } = validation.data;
-      const code = generateOtpCode();
-      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+      const user = await saveUserToDynamo(phone);
 
-      await storage.saveOtp(phone, code, expiresAt);
-
-      const isDev = process.env.NODE_ENV !== "production";
-      if (isDev) {
-        log(`OTP for ${phone}: ${code} (dev only)`);
-      }
-
-      return res.json({
-        success: true,
-        message: "OTP sent successfully",
-        ...(isDev ? { otp_preview: code } : {}),
-      });
+      log(`User registered: ${phone}`);
+      return res.json({ success: true, user });
     } catch (error: any) {
-      log(`Send OTP error: ${error.message}`);
-      return res.status(500).json({ message: "Failed to send OTP" });
-    }
-  });
-
-  app.post("/api/verify-otp", async (req, res) => {
-    try {
-      const validation = otpVerifySchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ message: validation.error.errors.map(e => e.message).join(", ") });
-      }
-
-      const { phone, code } = validation.data;
-      const otp = await storage.getOtp(phone);
-
-      if (!otp) {
-        return res.status(400).json({ message: "No OTP found. Please request a new one." });
-      }
-
-      if (otp.attempts >= 5) {
-        await storage.deleteOtp(phone);
-        return res.status(400).json({ message: "Too many attempts. Please request a new OTP." });
-      }
-
-      if (new Date() > otp.expiresAt) {
-        await storage.deleteOtp(phone);
-        return res.status(400).json({ message: "OTP expired. Please request a new one." });
-      }
-
-      if (otp.code !== code) {
-        await storage.incrementOtpAttempts(phone);
-        return res.status(400).json({ message: "Invalid OTP. Please try again." });
-      }
-
-      await storage.deleteOtp(phone);
-      await storage.upsertUser({ phone });
-
-      log(`User verified: ${phone}`);
-      return res.json({ success: true, phone });
-    } catch (error: any) {
-      log(`Verify OTP error: ${error.message}`);
-      return res.status(500).json({ message: "Verification failed" });
+      log(`Register phone error: ${error.message}`);
+      return res.status(500).json({ message: "Failed to register phone number" });
     }
   });
 
@@ -123,7 +68,7 @@ export async function registerRoutes(
       }
 
       const { phone, language } = validation.data;
-      const user = await storage.upsertUser({ phone, language });
+      const user = await saveUserToDynamo(phone, language);
 
       return res.json({ success: true, user });
     } catch (error: any) {

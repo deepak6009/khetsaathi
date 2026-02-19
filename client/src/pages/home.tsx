@@ -7,14 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Leaf, Upload, X, Camera, Stethoscope, Calendar, Sprout, MapPin, FileText, Phone, KeyRound, Globe, ArrowRight, ArrowLeft, Check } from "lucide-react";
+import { Leaf, Upload, X, Camera, Stethoscope, Calendar, Sprout, MapPin, FileText, Phone, Globe, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { DiagnosisCard } from "@/components/diagnosis-card";
 import { TreatmentPlan } from "@/components/treatment-plan";
 import { motion, AnimatePresence } from "framer-motion";
 
-type Step = "phone" | "otp" | "language" | "diagnose";
+type Step = "phone" | "language" | "diagnose";
 
-const stepOrder: Step[] = ["phone", "otp", "language", "diagnose"];
+const stepOrder: Step[] = ["phone", "language", "diagnose"];
 
 export default function Home() {
   const { toast } = useToast();
@@ -22,8 +22,6 @@ export default function Home() {
 
   const [currentStep, setCurrentStep] = useState<Step>("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [otpCode, setOtpCode] = useState("");
-  const [otpPreview, setOtpPreview] = useState<string | null>(null);
   const [language, setLanguage] = useState<Language>("English");
   const [cropName, setCropName] = useState("");
   const [location, setLocation] = useState("");
@@ -55,45 +53,21 @@ export default function Home() {
     setPreviews((p) => p.filter((_, i) => i !== index));
   }, [previews]);
 
-  const sendOtpMutation = useMutation({
+  const registerPhoneMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/send-otp", {
+      const res = await fetch("/api/register-phone", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: phoneNumber }),
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.message || "Failed to send OTP");
-      }
-      return res.json();
-    },
-    onSuccess: (data) => {
-      setOtpPreview(data.otp_preview || null);
-      setCurrentStep("otp");
-      toast({ title: "OTP sent to your phone!" });
-    },
-    onError: (err: Error) => {
-      toast({ title: err.message, variant: "destructive" });
-    },
-  });
-
-  const verifyOtpMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch("/api/verify-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phoneNumber, code: otpCode }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Verification failed");
+        throw new Error(err.message || "Failed to register");
       }
       return res.json();
     },
     onSuccess: () => {
       setCurrentStep("language");
-      toast({ title: "Phone verified!" });
     },
     onError: (err: Error) => {
       toast({ title: err.message, variant: "destructive" });
@@ -175,13 +149,9 @@ export default function Home() {
     subtitle: { English: "AI Crop Doctor", Telugu: "AI పంట వైద్యుడు", Hindi: "AI फसल डॉक्टर" },
     tagline: { English: "Your smart farming companion", Telugu: "మీ తెలివైన వ్యవసాయ సహచరుడు", Hindi: "आपका स्मार्ट खेती साथी" },
     enterPhone: { English: "Enter your phone number", Telugu: "మీ ఫోన్ నంబర్ ఎంటర్ చేయండి", Hindi: "अपना फोन नंबर डालें" },
-    phoneHint: { English: "We'll send you a verification code", Telugu: "మేము మీకు వెరిఫికేషన్ కోడ్ పంపుతాము", Hindi: "हम आपको एक सत्यापन कोड भेजेंगे" },
-    sendOtp: { English: "Send Code", Telugu: "కోడ్ పంపండి", Hindi: "कोड भेजें" },
-    sending: { English: "Sending...", Telugu: "పంపుతోంది...", Hindi: "भेज रहे हैं..." },
-    enterOtp: { English: "Enter verification code", Telugu: "వెరిఫికేషన్ కోడ్ ఎంటర్ చేయండి", Hindi: "सत्यापन कोड डालें" },
-    otpHint: { English: "Enter the 6-digit code sent to your phone", Telugu: "మీ ఫోన్‌కు పంపిన 6-అంకెల కోడ్ ఎంటర్ చేయండి", Hindi: "अपने फोन पर भेजा गया 6-अंकीय कोड डालें" },
-    verify: { English: "Verify", Telugu: "ధృవీకరించండి", Hindi: "सत्यापित करें" },
-    verifying: { English: "Verifying...", Telugu: "ధృవీకరిస్తోంది...", Hindi: "सत्यापित हो रहा है..." },
+    phoneHint: { English: "Start by entering your phone number", Telugu: "మీ ఫోన్ నంబర్ ఎంటర్ చేయడం ద్వారా ప్రారంభించండి", Hindi: "अपना फोन नंबर डालकर शुरू करें" },
+    continueBtn: { English: "Continue", Telugu: "కొనసాగించు", Hindi: "आगे बढ़ें" },
+    registering: { English: "Please wait...", Telugu: "దయచేసి వేచి ఉండండి...", Hindi: "कृपया प्रतीक्षा करें..." },
     chooseLanguage: { English: "Choose your language", Telugu: "మీ భాషను ఎంచుకోండి", Hindi: "अपनी भाषा चुनें" },
     languageHint: { English: "All results will be shown in your language", Telugu: "అన్ని ఫలితాలు మీ భాషలో చూపబడతాయి", Hindi: "सभी परिणाम आपकी भाषा में दिखाए जाएंगे" },
     continue: { English: "Continue", Telugu: "కొనసాగించు", Hindi: "आगे बढ़ें" },
@@ -204,8 +174,6 @@ export default function Home() {
     addMore: { English: "Add More", Telugu: "మరిన్ని", Hindi: "और जोड़ें" },
     step: { English: "Step", Telugu: "దశ", Hindi: "चरण" },
     of: { English: "of", Telugu: "లో", Hindi: "में से" },
-    resend: { English: "Resend Code", Telugu: "కోడ్ మళ్ళీ పంపు", Hindi: "कोड दोबारा भेजें" },
-    testOtp: { English: "Test OTP (shown for testing)", Telugu: "టెస్ట్ OTP (పరీక్ష కోసం చూపబడింది)", Hindi: "टेस्ट OTP (परीक्षण के लिए दिखाया गया)" },
     back: { English: "Back", Telugu: "వెనుకకు", Hindi: "वापस" },
     newDiagnosis: { English: "New Diagnosis", Telugu: "కొత్త నిర్ధారణ", Hindi: "नया निदान" },
   };
@@ -227,9 +195,8 @@ export default function Home() {
 
   const stepLabels: Record<Step, string> = {
     phone: "1",
-    otp: "2",
-    language: "3",
-    diagnose: "4",
+    language: "2",
+    diagnose: "3",
   };
 
   return (
@@ -325,18 +292,18 @@ export default function Home() {
 
                   <Button
                     className="w-full gap-2"
-                    onClick={() => sendOtpMutation.mutate()}
-                    disabled={phoneNumber.length < 10 || sendOtpMutation.isPending}
-                    data-testid="button-send-otp"
+                    onClick={() => registerPhoneMutation.mutate()}
+                    disabled={phoneNumber.length < 10 || registerPhoneMutation.isPending}
+                    data-testid="button-continue-phone"
                   >
-                    {sendOtpMutation.isPending ? (
+                    {registerPhoneMutation.isPending ? (
                       <>
                         <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                        {getLabel("sending")}
+                        {getLabel("registering")}
                       </>
                     ) : (
                       <>
-                        {getLabel("sendOtp")}
+                        {getLabel("continueBtn")}
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
@@ -346,89 +313,7 @@ export default function Home() {
             </motion.div>
           )}
 
-          {/* Step 2: OTP Verification */}
-          {currentStep === "otp" && (
-            <motion.div
-              key="otp"
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -30 }}
-              transition={{ duration: 0.25 }}
-            >
-              <Card className="p-5 sm:p-6">
-                <div className="text-center mb-6">
-                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <KeyRound className="w-8 h-8 text-primary" />
-                  </div>
-                  <h2 className="text-xl font-semibold mb-1" data-testid="text-otp-title">
-                    {getLabel("enterOtp")}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">{getLabel("otpHint")}</p>
-                </div>
-
-                {otpPreview && (
-                  <div className="mb-4 p-3 rounded-md bg-accent text-accent-foreground text-center">
-                    <p className="text-xs text-muted-foreground mb-1">{getLabel("testOtp")}</p>
-                    <p className="text-2xl font-bold tracking-[0.3em]" data-testid="text-otp-preview">{otpPreview}</p>
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  <div>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={6}
-                      placeholder="000000"
-                      value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      className="text-2xl text-center tracking-[0.4em] font-mono"
-                      data-testid="input-otp"
-                    />
-                  </div>
-
-                  <Button
-                    className="w-full gap-2"
-                    onClick={() => verifyOtpMutation.mutate()}
-                    disabled={otpCode.length !== 6 || verifyOtpMutation.isPending}
-                    data-testid="button-verify-otp"
-                  >
-                    {verifyOtpMutation.isPending ? (
-                      <>
-                        <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                        {getLabel("verifying")}
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-4 h-4" />
-                        {getLabel("verify")}
-                      </>
-                    )}
-                  </Button>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <Button variant="ghost" onClick={() => setCurrentStep("phone")} className="gap-1" data-testid="button-back-to-phone">
-                      <ArrowLeft className="w-4 h-4" />
-                      {getLabel("back")}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setOtpCode("");
-                        sendOtpMutation.mutate();
-                      }}
-                      disabled={sendOtpMutation.isPending}
-                      data-testid="button-resend-otp"
-                    >
-                      {getLabel("resend")}
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Step 3: Language Selection */}
+          {/* Step 2: Language Selection */}
           {currentStep === "language" && (
             <motion.div
               key="language"
@@ -496,7 +381,7 @@ export default function Home() {
             </motion.div>
           )}
 
-          {/* Step 4: Crop Diagnosis */}
+          {/* Step 3: Crop Diagnosis */}
           {currentStep === "diagnose" && (
             <motion.div
               key="diagnose"
