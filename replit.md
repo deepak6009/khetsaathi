@@ -99,14 +99,18 @@ Agricultural AI assistant where farmers upload crop images and receive disease d
 - PDF generated server-side via Puppeteer/Chromium, uploaded to S3
 - Logo asset: `attached_assets/Blue_and_Green_Farmers_Instagram_Post_(2)_1771525392133.png`
 
-## Design System (v2 - Earthy Professional)
-- **Primary color**: Dark forest green hsl(152, 45%, 28%) - #2d6e4e
-- **Background**: Warm off-white hsl(40, 20%, 98%)
-- **Cards**: Pure white with subtle real shadows (shadow-xs, shadow-sm)
+## Design System (v3 - Farmer-Friendly Green)
+- **Primary green**: #6BC30D (logo green) - buttons, accents, icons
+- **Secondary brown**: #964B00 (logo brown) - history icons, PDF badge
+- **Dark bg**: #032B22 - welcome screen, scan card, user chat bubbles
+- **White**: #ffffff - dashboard background, cards, light screens
+- **Black**: text color for readability
 - **Font**: Inter (Google Fonts) - clean, modern sans-serif
-- **Border radius**: 0.625rem (10px) default, 1rem for cards
-- **Headers**: Frosted glass effect (backdrop-blur-md, semi-transparent bg)
-- **Logo**: Centered in header across all screens
-- **Buttons**: Rounded-xl, shadow-sm, active:scale feedback
-- **Palette tone**: Earthy, warm neutrals, olive/forest green accents
-- **No heavy colored header bars** — clean white/transparent approach
+- **Border radius**: rounded-2xl for cards, rounded-xl for buttons
+- **Headers**: Frosted glass (backdrop-blur-xl, bg-white/90), logo + "KhetSaathi" centered
+- **All icons have text labels** (farmer-friendly UX, no icon-only buttons)
+- **Multi-language spacing**: Telugu/Hindi get extra leading-relaxed + tracking-wide
+- **Onboarding**: Language & Phone on white, Welcome on dark #032B22
+- **Dashboard**: White bg, dark green scan hero card, green/brown accent icon boxes
+- **Chat**: User bubbles dark #032B22, assistant bubbles white with green bot icon
+- **Shadows**: shadow-sm for cards, shadow-md for active states, shadow-lg for hero CTA

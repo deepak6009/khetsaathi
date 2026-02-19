@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, type ReactNode } from "react";
 import { useMutation } from "@tanstack/react-query";
 import type { Language } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,12 @@ interface HistoryItem {
   imageUrls?: string[];
 }
 
+const langSpace = (lang: Language) =>
+  lang === "Telugu" || lang === "Hindi" ? "leading-relaxed tracking-wide" : "leading-normal";
+
+const langSpaceTight = (lang: Language) =>
+  lang === "Telugu" || lang === "Hindi" ? "leading-relaxed" : "leading-snug";
+
 const labels = {
   title: { English: "KhetSaathi", Telugu: "ఖేత్ సాథీ", Hindi: "खेतसाथी" } as Record<Language, string>,
   subtitle: { English: "AI Crop Doctor", Telugu: "AI పంట వైద్యుడు", Hindi: "AI फसल डॉक्टर" } as Record<Language, string>,
@@ -63,9 +69,9 @@ const labels = {
   stepLanguage: { English: "Language", Telugu: "భాష", Hindi: "भाषा" } as Record<Language, string>,
   stepPhone: { English: "Phone", Telugu: "ఫోన్", Hindi: "फोन" } as Record<Language, string>,
   stepWelcome: { English: "Welcome", Telugu: "స్వాగతం", Hindi: "स्वागत" } as Record<Language, string>,
-  welcomeTitle: { English: "Welcome to KhetSaathi.", Telugu: "ఖేత్‌సాథీకి స్వాగతం.", Hindi: "खेतसाथी में आपका स्वागत है." } as Record<Language, string>,
+  welcomeTitle: { English: "Boost Your Crop Health With AI", Telugu: "AI తో మీ పంట ఆరోగ్యాన్ని పెంచుకోండి", Hindi: "AI से अपनी फसल की सेहत बढ़ाएं" } as Record<Language, string>,
   welcomeDesc: { English: "Your AI-powered crop doctor is ready to help you diagnose crop diseases and get personalized treatment plans.", Telugu: "మీ AI పంట వైద్యుడు పంట రోగాలను నిర్ధారించడానికి మరియు వ్యక్తిగత చికిత్స ప్రణాళికలను పొందడానికి సిద్ధంగా ఉంది.", Hindi: "आपका AI फसल डॉक्टर फसल रोगों का निदान करने और व्यक्तिगत उपचार योजना प्राप्त करने के लिए तैयार है।" } as Record<Language, string>,
-  startNow: { English: "Start Now", Telugu: "ఇప్పుడు ప్రారంభించండి", Hindi: "अभी शुरू करें" } as Record<Language, string>,
+  startNow: { English: "Get Started", Telugu: "ప్రారంభించండి", Hindi: "शुरू करें" } as Record<Language, string>,
   welcomeFeature1: { English: "Instant AI crop diagnosis", Telugu: "తక్షణ AI పంట రోగ నిర్ధారణ", Hindi: "तुरंत AI फसल निदान" } as Record<Language, string>,
   welcomeFeature2: { English: "7-day treatment plans", Telugu: "7-రోజుల చికిత్స ప్రణాళిక", Hindi: "7-दिन की उपचार योजना" } as Record<Language, string>,
   welcomeFeature3: { English: "Track your crop health", Telugu: "మీ పంట ఆరోగ్యం ట్రాక్ చేయండి", Hindi: "अपनी फसल की सेहत ट्रैक करें" } as Record<Language, string>,
@@ -81,8 +87,9 @@ const labels = {
   photosSelected: { English: "photos selected", Telugu: "ఫోటోలు ఎంచుకోబడ్డాయి", Hindi: "फोटो चयनित" } as Record<Language, string>,
   footer: { English: "Built for Farmers", Telugu: "రైతుల కోసం", Hindi: "किसानों के लिए" } as Record<Language, string>,
   logout: { English: "Logout", Telugu: "లాగౌట్", Hindi: "लॉगआउट" } as Record<Language, string>,
-  loggedInAs: { English: "Logged in", Telugu: "లాగిన్ అయ్యారు", Hindi: "लॉगिन" } as Record<Language, string>,
+  greeting: { English: "Good Morning!", Telugu: "శుభోదయం!", Hindi: "सुप्रभात!" } as Record<Language, string>,
   quickActions: { English: "Quick Actions", Telugu: "త్వరిత చర్యలు", Hindi: "त्वरित कार्य" } as Record<Language, string>,
+  swipeToStart: { English: "Swipe to get started", Telugu: "ప్రారంభించడానికి స్వైప్ చేయండి", Hindi: "शुरू करने के लिए स्वाइप करें" } as Record<Language, string>,
 };
 
 function AppHeader({
@@ -90,22 +97,22 @@ function AppHeader({
   onBack,
   backLabel,
   rightContent,
-  language,
+  dark,
 }: {
   showBack?: boolean;
   onBack?: () => void;
   backLabel?: string;
-  rightContent?: React.ReactNode;
-  language: Language;
+  rightContent?: ReactNode;
+  dark?: boolean;
 }) {
   return (
-    <header className="sticky top-0 z-50 bg-white/85 backdrop-blur-xl border-b border-black/[0.06]">
+    <header className={`sticky top-0 z-50 ${dark ? "bg-[#032B22]/90 backdrop-blur-xl border-b border-white/10" : "bg-white/90 backdrop-blur-xl border-b border-black/[0.06]"}`}>
       <div className="max-w-lg mx-auto px-4 h-14 flex items-center">
-        <div className="w-20 flex items-center">
+        <div className="w-24 flex items-center">
           {showBack && onBack ? (
             <button
               onClick={onBack}
-              className="flex items-center gap-0.5 text-muted-foreground active:opacity-70 -ml-1"
+              className={`flex items-center gap-0.5 active:opacity-70 -ml-1 ${dark ? "text-white/70" : "text-gray-500"}`}
               data-testid="button-back-header"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -115,11 +122,11 @@ function AppHeader({
         </div>
         <div className="flex-1 flex items-center justify-center gap-2">
           <img src={logoImage} alt="KhetSaathi" className="w-7 h-7 rounded-lg object-contain" data-testid="img-logo" />
-          <span className="text-[15px] font-bold tracking-tight text-foreground" data-testid="text-app-title">
-            {labels.title[language] || "KhetSaathi"}
+          <span className={`text-[15px] font-bold tracking-tight ${dark ? "text-white" : "text-gray-900"}`} data-testid="text-app-title">
+            KhetSaathi
           </span>
         </div>
-        <div className="w-20 flex items-center justify-end">
+        <div className="w-24 flex items-center justify-end">
           {rightContent}
         </div>
       </div>
@@ -485,14 +492,28 @@ export default function Home() {
     return phone;
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return labels.greeting[language] || "Good Morning!";
+    if (hour < 17) {
+      const afternoon: Record<Language, string> = { English: "Good Afternoon!", Telugu: "శుభ మధ్యాహ్నం!", Hindi: "शुभ दोपहर!" };
+      return afternoon[language] || "Good Afternoon!";
+    }
+    const evening: Record<Language, string> = { English: "Good Evening!", Telugu: "శుభ సాయంత్రం!", Hindi: "शुभ संध्या!" };
+    return evening[language] || "Good Evening!";
+  };
+
   const onboardingSteps: OnboardingStep[] = ["language", "phone", "welcome"];
   const currentOnboardingIdx = onboardingSteps.indexOf(onboardingStep);
 
   if (screen === "onboarding") {
+    const isDarkScreen = onboardingStep === "welcome";
+
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className={`min-h-screen flex flex-col ${isDarkScreen ? "text-white" : "bg-white"}`}
+        style={isDarkScreen ? { backgroundColor: "#032B22" } : undefined}>
         <AppHeader
-          language={language}
+          dark={isDarkScreen}
           showBack={onboardingStep !== "language"}
           onBack={() => {
             const idx = onboardingSteps.indexOf(onboardingStep);
@@ -503,7 +524,7 @@ export default function Home() {
 
         {onboardingStep !== "welcome" && (
           <div className="max-w-lg mx-auto w-full px-5 pt-5">
-            <div className="flex items-center justify-center gap-0">
+            <div className="flex items-center justify-center">
               {onboardingSteps.filter(s => s !== "welcome").map((step, idx) => {
                 const isActive = idx === currentOnboardingIdx;
                 const isDone = idx < currentOnboardingIdx;
@@ -517,18 +538,22 @@ export default function Home() {
                       data-testid={`step-indicator-${step}`}
                     >
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-all duration-200 ${
-                        isDone ? "bg-primary text-primary-foreground shadow-sm"
-                          : isActive ? "bg-primary text-primary-foreground shadow-sm ring-[3px] ring-primary/15"
-                          : "bg-muted text-muted-foreground"
-                      }`}>
+                        isDone ? "text-white shadow-sm"
+                          : isActive ? "text-white shadow-sm ring-[3px] ring-[#6BC30D]/20"
+                          : "bg-gray-200 text-gray-500"
+                      }`}
+                        style={(isDone || isActive) ? { backgroundColor: "#6BC30D" } : undefined}
+                      >
                         {isDone ? <Check className="w-4 h-4" /> : idx + 1}
                       </div>
-                      <span className={`text-[13px] font-semibold ${isActive || isDone ? "text-foreground" : "text-muted-foreground"}`}>
+                      <span className={`text-[13px] font-semibold ${langSpace(language)} ${isActive || isDone ? "text-gray-900" : "text-gray-400"}`}>
                         {getLabel(step === "language" ? "stepLanguage" : "stepPhone")}
                       </span>
                     </button>
                     {idx < 1 && (
-                      <div className={`w-12 h-[2px] mx-4 rounded-full transition-colors duration-300 ${idx < currentOnboardingIdx ? "bg-primary" : "bg-border"}`} />
+                      <div className={`w-12 h-[2px] mx-4 rounded-full transition-colors duration-300 ${idx < currentOnboardingIdx ? "" : "bg-gray-200"}`}
+                        style={idx < currentOnboardingIdx ? { backgroundColor: "#6BC30D" } : undefined}
+                      />
                     )}
                   </div>
                 );
@@ -540,36 +565,41 @@ export default function Home() {
         <main className="flex-1 max-w-lg mx-auto w-full px-5 py-8">
           <AnimatePresence mode="wait">
             {onboardingStep === "language" && (
-              <motion.div key="lang" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25, ease: "easeOut" }}>
+              <motion.div key="lang" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
                 <div className="space-y-6">
                   <div className="text-center space-y-2">
-                    <h2 className="text-2xl font-bold text-foreground tracking-tight">{getLabel("chooseLanguage")}</h2>
-                    <p className="text-[15px] text-muted-foreground">{getLabel("languageHint")}</p>
+                    <h2 className={`text-2xl font-bold text-gray-900 tracking-tight ${langSpace(language)}`}>{getLabel("chooseLanguage")}</h2>
+                    <p className={`text-[15px] text-gray-500 ${langSpace(language)}`}>{getLabel("languageHint")}</p>
                   </div>
                   <div className="space-y-3">
                     {(["English", "Telugu", "Hindi"] as Language[]).map((lang) => {
                       const isSelected = language === lang;
                       const nativeNames: Record<Language, string> = { English: "English", Telugu: "తెలుగు", Hindi: "हिन्दी" };
-                      const flags: Record<Language, string> = { English: "A", Telugu: "తె", Hindi: "हि" };
+                      const flags: Record<Language, string> = { English: "EN", Telugu: "తె", Hindi: "हि" };
                       return (
                         <button key={lang} onClick={() => setLanguage(lang)}
                           className={`w-full px-5 py-4 rounded-2xl text-left flex items-center gap-4 transition-all duration-200 active:scale-[0.98] ${
                             isSelected
-                              ? "bg-white border-2 border-primary shadow-md"
-                              : "bg-white border-2 border-transparent shadow-sm hover:shadow-md"
-                          }`} data-testid={`button-lang-${lang.toLowerCase()}`}>
-                          <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-base font-bold flex-shrink-0 transition-all duration-200 ${
-                            isSelected ? "bg-primary text-white" : "bg-muted text-muted-foreground"
-                          }`}>
+                              ? "bg-white border-2 shadow-md"
+                              : "bg-white border-2 border-gray-100 shadow-sm"
+                          }`}
+                          style={isSelected ? { borderColor: "#6BC30D" } : undefined}
+                          data-testid={`button-lang-${lang.toLowerCase()}`}
+                        >
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 transition-all duration-200 ${
+                            isSelected ? "text-white" : "bg-gray-100 text-gray-500"
+                          }`}
+                            style={isSelected ? { backgroundColor: "#6BC30D" } : undefined}
+                          >
                             {flags[lang]}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-bold text-foreground text-base leading-tight">{nativeNames[lang]}</p>
-                            <p className="text-[13px] text-muted-foreground mt-0.5">{lang}</p>
+                            <p className="font-bold text-gray-900 text-base leading-relaxed">{nativeNames[lang]}</p>
+                            <p className="text-[13px] text-gray-400 mt-0.5">{lang}</p>
                           </div>
-                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
-                            isSelected ? "border-primary bg-primary" : "border-gray-300"
-                          }`}>
+                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200`}
+                            style={isSelected ? { borderColor: "#6BC30D", backgroundColor: "#6BC30D" } : { borderColor: "#d1d5db" }}
+                          >
                             {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
                           </div>
                         </button>
@@ -577,50 +607,53 @@ export default function Home() {
                     })}
                   </div>
                   <Button
-                    className="w-full gap-2 h-[52px] rounded-2xl text-base font-bold shadow-md hover:shadow-lg transition-shadow"
+                    className="w-full gap-2 h-[52px] rounded-2xl text-base font-bold shadow-md hover:shadow-lg transition-shadow text-white border-0"
+                    style={{ backgroundColor: "#6BC30D" }}
                     size="lg"
                     onClick={() => setOnboardingStep("phone")}
                     data-testid="button-continue-language"
                   >
-                    {getLabel("continueBtn")} <ArrowRight className="w-4.5 h-4.5" />
+                    {getLabel("continueBtn")} <ArrowRight className="w-4 h-4" />
                   </Button>
                 </div>
               </motion.div>
             )}
 
             {onboardingStep === "phone" && (
-              <motion.div key="phone" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25, ease: "easeOut" }}>
+              <motion.div key="phone" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
                 <div className="space-y-6">
                   <div className="text-center space-y-4">
-                    <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto shadow-sm" style={{ background: "linear-gradient(135deg, hsl(152 45% 92%), hsl(152 45% 86%))" }}>
-                      <PhoneIcon className="w-9 h-9 text-primary" />
+                    <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto shadow-sm"
+                      style={{ backgroundColor: "#6BC30D15" }}>
+                      <PhoneIcon className="w-9 h-9" style={{ color: "#6BC30D" }} />
                     </div>
                     <div className="space-y-1.5">
-                      <h2 className="text-2xl font-bold text-foreground tracking-tight">{getLabel("enterPhone")}</h2>
-                      <p className="text-[15px] text-muted-foreground">{getLabel("phoneHint")}</p>
+                      <h2 className={`text-2xl font-bold text-gray-900 tracking-tight ${langSpace(language)}`}>{getLabel("enterPhone")}</h2>
+                      <p className={`text-[15px] text-gray-500 ${langSpace(language)}`}>{getLabel("phoneHint")}</p>
                     </div>
                   </div>
                   <div className="space-y-5">
-                    <div className="bg-white rounded-2xl p-5 shadow-sm">
-                      <label htmlFor="phone" className="text-[13px] font-semibold mb-2.5 block text-foreground uppercase tracking-wide">{getLabel("phoneLabel")}</label>
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                      <label htmlFor="phone" className={`text-[13px] font-semibold mb-2.5 block text-gray-700 uppercase tracking-wider ${langSpace(language)}`}>{getLabel("phoneLabel")}</label>
                       <Input
                         id="phone" type="tel" placeholder="+91 98765 43210" value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9+]/g, ""))}
-                        className="text-xl text-center tracking-widest h-14 rounded-xl bg-background border-border/60 font-semibold"
+                        className="text-xl text-center tracking-widest h-14 rounded-xl bg-gray-50 border-gray-200 font-semibold"
                         data-testid="input-phone"
                       />
                     </div>
                     <Button
-                      className="w-full gap-2 h-[52px] rounded-2xl text-base font-bold shadow-md hover:shadow-lg transition-shadow"
+                      className="w-full gap-2 h-[52px] rounded-2xl text-base font-bold shadow-md hover:shadow-lg transition-shadow text-white border-0"
+                      style={{ backgroundColor: "#6BC30D" }}
                       size="lg"
                       onClick={() => registerPhoneMutation.mutate()}
                       disabled={phoneNumber.length < 10 || registerPhoneMutation.isPending}
                       data-testid="button-continue-phone"
                     >
                       {registerPhoneMutation.isPending ? (
-                        <><Loader2 className="w-5 h-5 animate-spin" />{getLabel("registering")}</>
+                        <><Loader2 className="w-5 h-5 animate-spin" /><span className={langSpace(language)}>{getLabel("registering")}</span></>
                       ) : (
-                        <>{getLabel("continueBtn")} <ArrowRight className="w-4.5 h-4.5" /></>
+                        <><span className={langSpace(language)}>{getLabel("continueBtn")}</span> <ArrowRight className="w-4 h-4" /></>
                       )}
                     </Button>
                   </div>
@@ -629,129 +662,150 @@ export default function Home() {
             )}
 
             {onboardingStep === "welcome" && (
-              <motion.div key="welcome" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3, ease: "easeOut" }}>
-                <div className="flex flex-col items-center text-center space-y-7">
-                  <div className="w-24 h-24 rounded-3xl overflow-hidden shadow-lg ring-4 ring-primary/10">
-                    <img src={logoImage} alt="KhetSaathi" className="w-full h-full object-contain bg-white p-1.5" />
+              <motion.div key="welcome" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+                <div className="flex flex-col items-center text-center space-y-6">
+                  <div className="w-full grid grid-cols-2 gap-3 mb-2">
+                    <div className="rounded-2xl bg-white/10 border border-white/15 aspect-[4/5] flex items-center justify-center">
+                      <Leaf className="w-10 h-10 text-white/30" />
+                    </div>
+                    <div className="space-y-3">
+                      <div className="rounded-2xl bg-white/10 border border-white/15 aspect-square flex items-center justify-center">
+                        <Sprout className="w-8 h-8 text-white/30" />
+                      </div>
+                      <div className="rounded-2xl bg-white/10 border border-white/15 aspect-square flex items-center justify-center">
+                        <ScanLine className="w-8 h-8 text-white/30" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2.5">
-                    <h2 className="text-[26px] font-extrabold text-foreground tracking-tight leading-tight">{getLabel("welcomeTitle")}</h2>
-                    <p className="text-[15px] text-muted-foreground leading-relaxed max-w-[300px] mx-auto">{getLabel("welcomeDesc")}</p>
+
+                  <div className="space-y-3 px-2">
+                    <h2 className={`text-[28px] font-extrabold text-white tracking-tight leading-tight ${langSpace(language)}`}>
+                      {getLabel("welcomeTitle")}
+                    </h2>
+                    <p className={`text-[15px] text-white/60 max-w-[300px] mx-auto ${langSpace(language)}`}>
+                      {getLabel("welcomeDesc")}
+                    </p>
                   </div>
-                  <div className="w-full space-y-3">
+
+                  <div className="w-full space-y-2.5">
                     {[
-                      { icon: Sparkles, label: "welcomeFeature1" as const, color: "from-emerald-500/10 to-green-500/5" },
-                      { icon: CalendarDays, label: "welcomeFeature2" as const, color: "from-blue-500/10 to-cyan-500/5" },
-                      { icon: Shield, label: "welcomeFeature3" as const, color: "from-amber-500/10 to-orange-500/5" },
-                    ].map(({ icon: Icon, label, color }) => (
-                      <div key={label} className={`flex items-center gap-4 px-5 py-4 rounded-2xl bg-white shadow-sm`}>
-                        <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center flex-shrink-0`}>
-                          <Icon className="w-5 h-5 text-primary" />
+                      { icon: Sparkles, label: "welcomeFeature1" as const },
+                      { icon: CalendarDays, label: "welcomeFeature2" as const },
+                      { icon: Shield, label: "welcomeFeature3" as const },
+                    ].map(({ icon: Icon, label }) => (
+                      <div key={label} className="flex items-center gap-3.5 px-4 py-3.5 rounded-xl bg-white/8 border border-white/10">
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#6BC30D20" }}>
+                          <Icon className="w-[18px] h-[18px]" style={{ color: "#6BC30D" }} />
                         </div>
-                        <span className="text-[15px] font-semibold text-foreground text-left">{getLabel(label)}</span>
+                        <span className={`text-[14px] font-medium text-white/90 text-left ${langSpace(language)}`}>{getLabel(label)}</span>
                       </div>
                     ))}
                   </div>
+
                   <Button
-                    className="w-full gap-2 h-14 rounded-2xl text-base font-bold shadow-lg hover:shadow-xl transition-shadow"
+                    className="w-full gap-2 h-14 rounded-2xl text-base font-bold shadow-lg hover:shadow-xl transition-shadow border-0 text-black"
+                    style={{ backgroundColor: "#6BC30D" }}
                     size="lg"
                     onClick={() => { setScreen("dashboard"); fetchRecentHistory(phoneNumber); }}
                     data-testid="button-start-now"
                   >
-                    {getLabel("startNow")} <ArrowRight className="w-5 h-5" />
+                    <span className={langSpace(language)}>{getLabel("startNow")}</span> <ArrowRight className="w-5 h-5" />
                   </Button>
+
+                  <p className={`text-xs text-white/30 font-medium mt-2 ${langSpace(language)}`}>
+                    {getLabel("swipeToStart")}
+                  </p>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
         </main>
 
-        <footer className="mt-auto">
-          <div className="max-w-lg mx-auto px-4 py-4 text-center text-xs text-muted-foreground/50 font-medium">
-            {getLabel("title")} &middot; {getLabel("footer")}
-          </div>
-        </footer>
+        {!isDarkScreen && (
+          <footer className="mt-auto">
+            <div className="max-w-lg mx-auto px-4 py-4 text-center text-xs text-gray-400 font-medium">
+              KhetSaathi &middot; {getLabel("footer")}
+            </div>
+          </footer>
+        )}
       </div>
     );
   }
 
   if (screen === "dashboard") {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="min-h-screen bg-white flex flex-col">
         <AppHeader
-          language={language}
           rightContent={
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1 text-muted-foreground/70 active:opacity-70 text-xs"
+              className="flex items-center gap-1.5 text-gray-400 active:opacity-70 text-xs font-medium"
               data-testid="button-logout"
             >
               <LogOut className="w-3.5 h-3.5" />
+              <span className={langSpaceTight(language)}>{getLabel("logout")}</span>
             </button>
           }
         />
 
         <main className="flex-1 max-w-lg mx-auto w-full px-4 py-5 space-y-5">
-          {(userLocation || phoneNumber) && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <p className="text-[13px] font-semibold text-foreground leading-tight">{formatPhone(phoneNumber)}</p>
-                  {userLocation && (
-                    <p className="text-[11px] text-muted-foreground flex items-center gap-0.5">
-                      <MapPin className="w-2.5 h-2.5" />{userLocation}
-                    </p>
-                  )}
-                </div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ backgroundColor: "#6BC30D15" }}>
+              <User className="w-5 h-5" style={{ color: "#6BC30D" }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className={`text-[11px] text-gray-400 font-medium ${langSpaceTight(language)}`}>{getGreeting()}</p>
+              <p className="text-[15px] font-bold text-gray-900 leading-tight">{formatPhone(phoneNumber)}</p>
+            </div>
+            {userLocation && (
+              <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
+                <MapPin className="w-3 h-3" style={{ color: "#6BC30D" }} />
+                <span className="text-[11px] text-gray-500 font-medium max-w-[100px] truncate">{userLocation}</span>
               </div>
-            </motion.div>
-          )}
+            )}
+          </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
             <button
               onClick={goToCapture}
-              className="w-full rounded-2xl overflow-hidden shadow-lg active:scale-[0.98] transition-all duration-200 hover:shadow-xl"
+              className="w-full rounded-2xl overflow-hidden shadow-lg active:scale-[0.98] transition-all duration-200"
               data-testid="button-scan-crop"
-              style={{ background: "linear-gradient(135deg, hsl(152 45% 30%), hsl(160 40% 22%))" }}
+              style={{ backgroundColor: "#032B22" }}
             >
               <div className="p-6 text-white flex items-center gap-5">
-                <div className="w-16 h-16 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center flex-shrink-0 border border-white/10">
                   <Camera className="w-8 h-8" />
                 </div>
                 <div className="text-left flex-1">
-                  <p className="text-xl font-extrabold leading-tight tracking-tight">{getLabel("scanCrop")}</p>
-                  <p className="text-[13px] text-white/65 mt-1.5 leading-snug font-medium">{getLabel("scanDesc")}</p>
+                  <p className={`text-xl font-extrabold leading-tight tracking-tight ${langSpace(language)}`}>{getLabel("scanCrop")}</p>
+                  <p className={`text-[13px] text-white/55 mt-1.5 font-medium ${langSpace(language)}`}>{getLabel("scanDesc")}</p>
                 </div>
-                <ChevronRight className="w-5 h-5 text-white/40 flex-shrink-0" />
+                <ChevronRight className="w-5 h-5 text-white/30 flex-shrink-0" />
               </div>
             </button>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.08 }}>
-            <p className="text-[13px] font-semibold text-muted-foreground mb-2.5 uppercase tracking-wider">{getLabel("quickActions")}</p>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={goToCapture}
-                className="flex items-center gap-3 p-4 rounded-2xl bg-white shadow-sm active:scale-[0.98] active:shadow-xs transition-all duration-150 border border-black/[0.04]"
+                className="flex items-center gap-3 p-4 rounded-2xl bg-white shadow-sm active:scale-[0.98] transition-all duration-150 border border-gray-100"
                 data-testid="button-quick-new-scan"
               >
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(135deg, hsl(152 45% 92%), hsl(152 45% 86%))" }}>
-                  <ScanLine className="w-5 h-5 text-primary" />
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#6BC30D15" }}>
+                  <ScanLine className="w-5 h-5" style={{ color: "#6BC30D" }} />
                 </div>
-                <span className="text-[14px] font-semibold text-foreground">{getLabel("newScan")}</span>
+                <span className={`text-[14px] font-semibold text-gray-900 ${langSpaceTight(language)}`}>{getLabel("newScan")}</span>
               </button>
               <Link href={`/history?phone=${encodeURIComponent(phoneNumber)}&lang=${language}`}>
                 <button
-                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white shadow-sm active:scale-[0.98] active:shadow-xs transition-all duration-150 border border-black/[0.04]"
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white shadow-sm active:scale-[0.98] transition-all duration-150 border border-gray-100"
                   data-testid="button-quick-history"
                 >
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(135deg, hsl(80 40% 92%), hsl(80 40% 86%))" }}>
-                    <Clock className="w-5 h-5 text-primary" />
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#964B0012" }}>
+                    <Clock className="w-5 h-5" style={{ color: "#964B00" }} />
                   </div>
-                  <span className="text-[14px] font-semibold text-foreground">{getLabel("myHistory")}</span>
+                  <span className={`text-[14px] font-semibold text-gray-900 ${langSpaceTight(language)}`}>{getLabel("myHistory")}</span>
                 </button>
               </Link>
             </div>
@@ -759,46 +813,48 @@ export default function Home() {
 
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.16 }}>
             <div className="flex items-center justify-between gap-2 mb-3">
-              <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider">{getLabel("recentDiagnoses")}</h3>
+              <h3 className={`text-[13px] font-semibold text-gray-400 uppercase tracking-wider ${langSpaceTight(language)}`}>{getLabel("recentDiagnoses")}</h3>
               {recentHistory.length > 0 && (
                 <Link href={`/history?phone=${encodeURIComponent(phoneNumber)}&lang=${language}`}>
-                  <span className="text-[13px] text-primary font-semibold flex items-center gap-0.5">{getLabel("viewAll")} <ChevronRight className="w-3.5 h-3.5" /></span>
+                  <span className="text-[13px] font-semibold flex items-center gap-0.5" style={{ color: "#6BC30D" }}>
+                    <span className={langSpaceTight(language)}>{getLabel("viewAll")}</span> <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
                 </Link>
               )}
             </div>
 
             {historyLoading ? (
               <div className="flex justify-center py-12">
-                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin" style={{ color: "#6BC30D" }} />
               </div>
             ) : recentHistory.length === 0 ? (
-              <div className="text-center py-12 rounded-2xl bg-white shadow-sm border border-black/[0.04]">
-                <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-3">
-                  <Leaf className="w-7 h-7 text-muted-foreground/30" />
+              <div className="text-center py-14 rounded-2xl bg-gray-50 border border-gray-100">
+                <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                  <Leaf className="w-7 h-7 text-gray-300" />
                 </div>
-                <p className="text-[15px] font-semibold text-muted-foreground">{getLabel("noDiagnoses")}</p>
-                <p className="text-[13px] text-muted-foreground/60 mt-1">{getLabel("noDiagnosesHint")}</p>
+                <p className={`text-[15px] font-semibold text-gray-400 ${langSpace(language)}`}>{getLabel("noDiagnoses")}</p>
+                <p className={`text-[13px] text-gray-300 mt-1 ${langSpace(language)}`}>{getLabel("noDiagnosesHint")}</p>
               </div>
             ) : (
               <div className="space-y-2.5">
                 {recentHistory.map((item, idx) => (
-                  <div key={idx} className="rounded-2xl bg-white shadow-sm p-4 border border-black/[0.04] active:scale-[0.99] transition-transform" data-testid={`card-recent-${idx}`}>
+                  <div key={idx} className="rounded-2xl bg-white shadow-sm p-4 border border-gray-100" data-testid={`card-recent-${idx}`}>
                     <div className="flex items-start gap-3.5">
                       {item.imageUrls && item.imageUrls.length > 0 ? (
                         <img src={item.imageUrls[0]} alt="Crop" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
                       ) : (
-                        <div className="w-14 h-14 rounded-xl bg-muted/50 flex items-center justify-center flex-shrink-0">
-                          <Sprout className="w-6 h-6 text-muted-foreground/40" />
+                        <div className="w-14 h-14 rounded-xl bg-gray-50 flex items-center justify-center flex-shrink-0">
+                          <Sprout className="w-6 h-6 text-gray-300" />
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
                         {item.diagnosis?.disease && (
-                          <p className="text-[14px] font-bold text-foreground truncate">{item.diagnosis.disease}</p>
+                          <p className={`text-[14px] font-bold text-gray-900 truncate ${langSpaceTight(language)}`}>{item.diagnosis.disease}</p>
                         )}
                         {item.diagnosis?.crop_identified && (
-                          <p className="text-[13px] text-muted-foreground truncate mt-0.5">{item.diagnosis.crop_identified}</p>
+                          <p className={`text-[13px] text-gray-500 truncate mt-0.5 ${langSpaceTight(language)}`}>{item.diagnosis.crop_identified}</p>
                         )}
-                        <p className="text-[11px] text-muted-foreground/60 mt-1.5 flex items-center gap-1 font-medium">
+                        <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1 font-medium">
                           <CalendarDays className="w-3 h-3" />
                           {new Date(item.timestamp).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                         </p>
@@ -815,8 +871,8 @@ export default function Home() {
         </main>
 
         <footer className="mt-auto">
-          <div className="max-w-lg mx-auto px-4 py-4 text-center text-xs text-muted-foreground/50 font-medium">
-            {getLabel("title")} &middot; {getLabel("footer")}
+          <div className="max-w-lg mx-auto px-4 py-4 text-center text-xs text-gray-300 font-medium">
+            KhetSaathi &middot; {getLabel("footer")}
           </div>
         </footer>
       </div>
@@ -825,9 +881,8 @@ export default function Home() {
 
   if (screen === "capture") {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="min-h-screen bg-white flex flex-col">
         <AppHeader
-          language={language}
           showBack
           onBack={goToDashboard}
           backLabel={getLabel("back")}
@@ -836,31 +891,32 @@ export default function Home() {
         <main className="flex-1 max-w-lg mx-auto w-full px-4 py-6">
           <div className="space-y-6">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-foreground tracking-tight">{getLabel("uploadPhotos")}</h2>
-              <p className="text-[15px] text-muted-foreground">{getLabel("uploadHint")}</p>
+              <h2 className={`text-2xl font-bold text-gray-900 tracking-tight ${langSpace(language)}`}>{getLabel("uploadPhotos")}</h2>
+              <p className={`text-[15px] text-gray-500 ${langSpace(language)}`}>{getLabel("uploadHint")}</p>
             </div>
 
             {previews.length === 0 ? (
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full py-20 rounded-2xl border-2 border-dashed border-primary/25 bg-white flex flex-col items-center justify-center gap-5 active:scale-[0.98] active:bg-primary/[0.02] transition-all shadow-sm"
+                className="w-full py-20 rounded-2xl border-2 border-dashed bg-gray-50 flex flex-col items-center justify-center gap-5 active:scale-[0.98] transition-all"
+                style={{ borderColor: "#6BC30D40" }}
                 data-testid="button-upload-image"
               >
-                <div className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-sm" style={{ background: "linear-gradient(135deg, hsl(152 45% 92%), hsl(152 45% 85%))" }}>
-                  <Camera className="w-10 h-10 text-primary" />
+                <div className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-sm" style={{ backgroundColor: "#6BC30D15" }}>
+                  <Camera className="w-10 h-10" style={{ color: "#6BC30D" }} />
                 </div>
                 <div className="text-center">
-                  <span className="text-base font-bold text-foreground block">{getLabel("tapToCapture")}</span>
-                  <span className="text-[13px] text-muted-foreground mt-1 block">1-6 photos</span>
+                  <span className={`text-base font-bold text-gray-900 block ${langSpace(language)}`}>{getLabel("tapToCapture")}</span>
+                  <span className="text-[13px] text-gray-400 mt-1 block">1-6 photos</span>
                 </div>
               </button>
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[15px] font-semibold text-foreground">{selectedFiles.length} {getLabel("photosSelected")}</span>
+                  <span className={`text-[15px] font-semibold text-gray-900 ${langSpaceTight(language)}`}>{selectedFiles.length} {getLabel("photosSelected")}</span>
                   {selectedFiles.length < 6 && (
                     <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} data-testid="button-add-more-images" className="gap-1.5 rounded-xl text-[13px] font-semibold h-9">
-                      <Plus className="w-4 h-4" />{getLabel("addMore")}
+                      <Plus className="w-4 h-4" /><span className={langSpaceTight(language)}>{getLabel("addMore")}</span>
                     </Button>
                   )}
                 </div>
@@ -882,16 +938,17 @@ export default function Home() {
             <input ref={fileInputRef} type="file" accept="image/*" multiple capture="environment" onChange={handleFileSelect} className="hidden" data-testid="input-file-upload" />
 
             <Button
-              className="w-full gap-2 h-[52px] rounded-2xl text-base font-bold shadow-md hover:shadow-lg transition-shadow"
+              className="w-full gap-2 h-[52px] rounded-2xl text-base font-bold shadow-md hover:shadow-lg transition-shadow text-white border-0"
+              style={{ backgroundColor: "#6BC30D" }}
               size="lg"
               onClick={() => uploadMutation.mutate()}
               disabled={selectedFiles.length === 0 || uploadMutation.isPending}
               data-testid="button-analyze-crop"
             >
               {uploadMutation.isPending ? (
-                <><Loader2 className="w-5 h-5 animate-spin" />{getLabel("uploading")}</>
+                <><Loader2 className="w-5 h-5 animate-spin" /><span className={langSpace(language)}>{getLabel("uploading")}</span></>
               ) : (
-                <>{getLabel("analyzeBtn")} <ArrowRight className="w-4.5 h-4.5" /></>
+                <><span className={langSpace(language)}>{getLabel("analyzeBtn")}</span> <ArrowRight className="w-4 h-4" /></>
               )}
             </Button>
           </div>
@@ -901,17 +958,16 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <AppHeader
-        language={language}
         showBack
         onBack={goToDashboard}
         backLabel={getLabel("back")}
         rightContent={
-          <Button variant="ghost" size="sm" className="text-muted-foreground gap-1 text-xs h-8 rounded-lg px-2" data-testid="button-new-diagnosis"
+          <Button variant="ghost" size="sm" className="text-gray-500 gap-1.5 text-xs h-8 rounded-lg px-2" data-testid="button-new-diagnosis"
             onClick={() => { goToDashboard(); setTimeout(goToCapture, 100); }}>
             <RotateCcw className="w-3.5 h-3.5" />
-            {getLabel("newDiagnosis")}
+            <span className={langSpaceTight(language)}>{getLabel("newDiagnosis")}</span>
           </Button>
         }
       />
@@ -921,16 +977,17 @@ export default function Home() {
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               {msg.role === "assistant" && (
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "linear-gradient(135deg, hsl(152 45% 92%), hsl(152 45% 86%))" }}>
-                  <Bot className="w-4 h-4 text-primary" />
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: "#6BC30D15" }}>
+                  <Bot className="w-4 h-4" style={{ color: "#6BC30D" }} />
                 </div>
               )}
               <div
-                className={`max-w-[80%] rounded-2xl px-4 py-3 text-[14px] leading-relaxed ${
+                className={`max-w-[80%] rounded-2xl px-4 py-3 text-[14px] ${langSpace(language)} ${
                   msg.role === "user"
-                    ? "bg-primary text-primary-foreground rounded-br-md shadow-md"
-                    : "bg-white text-foreground rounded-bl-md shadow-sm border border-black/[0.04]"
+                    ? "text-white rounded-br-md shadow-md"
+                    : "bg-white text-gray-900 rounded-bl-md shadow-sm border border-gray-100"
                 }`}
+                style={msg.role === "user" ? { backgroundColor: "#032B22" } : undefined}
                 data-testid={`chat-message-${idx}`}
               >
                 {msg.content}
@@ -940,11 +997,11 @@ export default function Home() {
 
           {chatPhase === "awaiting_plan_language" && (
             <div className="flex gap-2.5 justify-start">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "linear-gradient(135deg, hsl(152 45% 92%), hsl(152 45% 86%))" }}>
-                <Languages className="w-4 h-4 text-primary" />
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: "#6BC30D15" }}>
+                <Languages className="w-4 h-4" style={{ color: "#6BC30D" }} />
               </div>
-              <div className="max-w-[85%] rounded-2xl bg-white shadow-md p-4 rounded-bl-md border border-black/[0.04]" data-testid="card-plan-language-picker">
-                <p className="text-[14px] font-bold mb-3 text-foreground">{getLabel("choosePlanLanguage")}</p>
+              <div className="max-w-[85%] rounded-2xl bg-white shadow-md p-4 rounded-bl-md border border-gray-100" data-testid="card-plan-language-picker">
+                <p className={`text-[14px] font-bold mb-3 text-gray-900 ${langSpace(language)}`}>{getLabel("choosePlanLanguage")}</p>
                 <div className="flex flex-wrap gap-2">
                   {(["English", "Telugu", "Hindi"] as Language[]).map((lang) => (
                     <Button key={lang} variant="outline" size="sm" onClick={() => handlePlanLanguageSelect(lang)} className="rounded-xl font-semibold" data-testid={`button-plan-lang-${lang.toLowerCase()}`}>
@@ -958,44 +1015,45 @@ export default function Home() {
 
           {treatmentPlan && planLanguage && (
             <div className="flex gap-2.5 justify-start">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "linear-gradient(135deg, hsl(152 45% 92%), hsl(152 45% 86%))" }}>
-                <Bot className="w-4 h-4 text-primary" />
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: "#6BC30D15" }}>
+                <Bot className="w-4 h-4" style={{ color: "#6BC30D" }} />
               </div>
               <div className="max-w-[82%]">
                 {pdfUrl ? (
-                  <div className="bg-white rounded-2xl rounded-bl-md overflow-hidden shadow-md border border-black/[0.04] cursor-pointer active:scale-[0.98] transition-transform" onClick={() => window.open(pdfUrl, "_blank")} data-testid="card-pdf-preview">
+                  <div className="bg-white rounded-2xl rounded-bl-md overflow-hidden shadow-md border border-gray-100 cursor-pointer active:scale-[0.98] transition-transform" onClick={() => window.open(pdfUrl, "_blank")} data-testid="card-pdf-preview">
                     <div className="px-4 py-3.5 flex items-center gap-3.5">
-                      <div className="w-12 h-12 rounded-xl bg-red-500 flex items-center justify-center flex-shrink-0 shadow-sm">
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm" style={{ backgroundColor: "#964B00" }}>
                         <FileText className="w-6 h-6 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-bold text-foreground truncate" data-testid="text-pdf-title">
+                        <p className={`text-[14px] font-bold text-gray-900 truncate ${langSpaceTight(language)}`} data-testid="text-pdf-title">
                           {planLanguage === "Telugu" ? "7-రోజుల ప్రణాళిక" : planLanguage === "Hindi" ? "7-दिन की योजना" : "7-Day Treatment Plan"}
                         </p>
-                        <p className="text-[12px] text-muted-foreground font-medium">PDF &middot; {planLanguage === "Telugu" ? "తెలుగు" : planLanguage === "Hindi" ? "हिन्दी" : "English"}</p>
+                        <p className="text-[12px] text-gray-400 font-medium">PDF &middot; {planLanguage === "Telugu" ? "తెలుగు" : planLanguage === "Hindi" ? "हिन्दी" : "English"}</p>
                       </div>
                       <a href={pdfUrl} download target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                        className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center" data-testid="button-download-pdf">
-                        <Download className="w-4.5 h-4.5 text-primary" />
+                        className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#6BC30D15" }}
+                        data-testid="button-download-pdf">
+                        <Download className="w-4 h-4" style={{ color: "#6BC30D" }} />
                       </a>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border border-black/[0.04]" data-testid="card-plan-text-fallback">
+                  <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border border-gray-100" data-testid="card-plan-text-fallback">
                     <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-primary" />
-                      <p className="text-[14px] font-semibold text-foreground">
+                      <FileText className="w-4 h-4" style={{ color: "#6BC30D" }} />
+                      <p className={`text-[14px] font-semibold text-gray-900 ${langSpaceTight(language)}`}>
                         {planLanguage === "Telugu" ? "7-రోజుల ప్రణాళిక" : planLanguage === "Hindi" ? "7-दिन की योजना" : "7-Day Treatment Plan"}
                       </p>
                     </div>
                   </div>
                 )}
                 <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                  <span className="text-xs text-muted-foreground font-medium">{getLabel("getPlanIn")}:</span>
+                  <span className={`text-xs text-gray-400 font-medium ${langSpaceTight(language)}`}>{getLabel("getPlanIn")}:</span>
                   {(["English", "Telugu", "Hindi"] as Language[]).filter((l) => l !== planLanguage).map((lang) => (
                     <Button key={lang} variant="ghost" size="sm" onClick={() => regeneratePlanInLanguage(lang)} disabled={isTyping} className="text-xs h-7 rounded-lg font-semibold" data-testid={`button-regen-plan-${lang.toLowerCase()}`}>
                       <Languages className="w-3 h-3 mr-1" />
-                      {lang === "English" ? "English" : lang === "Telugu" ? "తెలుగు" : "हिన्దी"}
+                      {lang === "English" ? "English" : lang === "Telugu" ? "తెలుగు" : "हिन्दी"}
                     </Button>
                   ))}
                 </div>
@@ -1005,14 +1063,14 @@ export default function Home() {
 
           {isTyping && (
             <div className="flex gap-2.5 justify-start">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "linear-gradient(135deg, hsl(152 45% 92%), hsl(152 45% 86%))" }}>
-                <Bot className="w-4 h-4 text-primary" />
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: "#6BC30D15" }}>
+                <Bot className="w-4 h-4" style={{ color: "#6BC30D" }} />
               </div>
-              <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3.5 shadow-sm border border-black/[0.04]">
+              <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3.5 shadow-sm border border-gray-100">
                 <div className="flex gap-1.5 items-center">
-                  <span className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: "#6BC30D60", animationDelay: "0ms" }} />
+                  <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: "#6BC30D60", animationDelay: "150ms" }} />
+                  <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: "#6BC30D60", animationDelay: "300ms" }} />
                 </div>
               </div>
             </div>
@@ -1021,12 +1079,12 @@ export default function Home() {
         </div>
 
         {isVoiceActive && (
-          <div className="border-t border-border bg-white">
+          <div className="border-t border-gray-100 bg-white">
             <VoiceChat phone={phoneNumber} language={language} onClose={() => setIsVoiceActive(false)} />
           </div>
         )}
 
-        <div className="border-t border-black/[0.06] px-4 py-3 bg-white pb-[env(safe-area-inset-bottom,10px)]">
+        <div className="border-t border-gray-200 px-4 py-3 bg-white pb-[env(safe-area-inset-bottom,10px)]">
           <div className="flex gap-2 items-center max-w-lg mx-auto">
             <Input
               ref={chatInputRef}
@@ -1034,17 +1092,19 @@ export default function Home() {
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
               placeholder={getLabel("typeMessage")}
-              className="flex-1 h-11 rounded-xl bg-background border-border/50 text-[14px]"
+              className="flex-1 h-11 rounded-xl bg-gray-50 border-gray-200 text-[14px]"
               disabled={isTyping || chatPhase === "awaiting_plan_language" || isVoiceActive}
               data-testid="input-chat"
             />
             <button onClick={() => setIsVoiceActive(!isVoiceActive)} disabled={isTyping}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${isVoiceActive ? "bg-primary text-primary-foreground shadow-md" : "bg-background border border-border/50 text-muted-foreground"}`}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${isVoiceActive ? "text-white shadow-md" : "bg-gray-50 border border-gray-200 text-gray-500"}`}
+              style={isVoiceActive ? { backgroundColor: "#6BC30D" } : undefined}
               data-testid="button-voice-call">
               <Mic className="w-[18px] h-[18px]" />
             </button>
             <button onClick={sendMessage} disabled={!chatInput.trim() || isTyping || chatPhase === "awaiting_plan_language" || isVoiceActive}
-              className="w-11 h-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0 shadow-sm disabled:opacity-40 transition-opacity"
+              className="w-11 h-11 rounded-xl text-white flex items-center justify-center flex-shrink-0 shadow-sm disabled:opacity-40 transition-opacity"
+              style={{ backgroundColor: "#6BC30D" }}
               data-testid="button-send-chat">
               <Send className="w-[18px] h-[18px]" />
             </button>
