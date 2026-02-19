@@ -8,7 +8,6 @@ export interface DiseaseRequest {
   crop: string;
   location: string;
   language: string;
-  summary: string;
 }
 
 export async function detectDisease(data: DiseaseRequest): Promise<any> {

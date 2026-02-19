@@ -9,10 +9,12 @@ import {
   PutCommand,
   GetCommand,
   UpdateCommand,
+  QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 
 const DYNAMO_REGION = "ap-south-1";
-const TABLE_NAME = "KhetSathiUsers";
+const KHET_SATHI_USERS_TABLE = "KhetSathiUsers";
+const USERCASES_TABLE = "usercases";
 
 const client = new DynamoDBClient({
   region: DYNAMO_REGION,
@@ -24,37 +26,67 @@ const client = new DynamoDBClient({
 
 const docClient = DynamoDBDocumentClient.from(client);
 
-let tableReady = false;
+let khetSathiUsersTableReady = false;
+let usercasesTableReady = false;
 
-async function ensureTable(): Promise<void> {
-  if (tableReady) return;
-
+async function ensureTable(tableName: string, setReady: (val: boolean) => void): Promise<void> {
   try {
-    await client.send(new DescribeTableCommand({ TableName: TABLE_NAME }));
-    tableReady = true;
+    await client.send(new DescribeTableCommand({ TableName: tableName }));
+    setReady(true);
   } catch (err: any) {
     if (err instanceof ResourceNotFoundException || err.name === "ResourceNotFoundException") {
-      await client.send(
-        new CreateTableCommand({
-          TableName: TABLE_NAME,
-          KeySchema: [{ AttributeName: "phone", KeyType: "HASH" }],
-          AttributeDefinitions: [{ AttributeName: "phone", AttributeType: "S" }],
-          BillingMode: "PAY_PER_REQUEST",
-        })
-      );
+      if (tableName === KHET_SATHI_USERS_TABLE) {
+        await client.send(
+          new CreateTableCommand({
+            TableName: tableName,
+            KeySchema: [{ AttributeName: "phone", KeyType: "HASH" }],
+            AttributeDefinitions: [{ AttributeName: "phone", AttributeType: "S" }],
+            BillingMode: "PAY_PER_REQUEST",
+          })
+        );
+      } else if (tableName === USERCASES_TABLE) {
+        await client.send(
+          new CreateTableCommand({
+            TableName: tableName,
+            KeySchema: [
+              { AttributeName: "phone", KeyType: "HASH" },
+              { AttributeName: "timestamp", KeyType: "RANGE" },
+            ],
+            AttributeDefinitions: [
+              { AttributeName: "phone", AttributeType: "S" },
+              { AttributeName: "timestamp", AttributeType: "S" },
+            ],
+            BillingMode: "PAY_PER_REQUEST",
+          })
+        );
+      }
 
       let status = "CREATING";
       while (status === "CREATING") {
         await new Promise((r) => setTimeout(r, 1000));
-        const desc = await client.send(new DescribeTableCommand({ TableName: TABLE_NAME }));
+        const desc = await client.send(new DescribeTableCommand({ TableName: tableName }));
         status = desc.Table?.TableStatus || "CREATING";
       }
 
-      tableReady = true;
+      setReady(true);
     } else {
       throw err;
     }
   }
+}
+
+async function ensureKhetSathiUsersTable(): Promise<void> {
+  if (khetSathiUsersTableReady) return;
+  await ensureTable(KHET_SATHI_USERS_TABLE, (val) => {
+    khetSathiUsersTableReady = val;
+  });
+}
+
+async function ensureUsercasesTable(): Promise<void> {
+  if (usercasesTableReady) return;
+  await ensureTable(USERCASES_TABLE, (val) => {
+    usercasesTableReady = val;
+  });
 }
 
 export interface DynamoUser {
@@ -63,8 +95,18 @@ export interface DynamoUser {
   createdAt: string;
 }
 
+export interface UserCaseData {
+  phone: string;
+  timestamp: string;
+  conversationSummary: string;
+  diagnosis?: Record<string, any>;
+  treatmentPlan?: string;
+  language?: string;
+  imageUrls?: string[];
+}
+
 export async function saveUserToDynamo(phone: string, language?: string): Promise<DynamoUser> {
-  await ensureTable();
+  await ensureKhetSathiUsersTable();
 
   const existing = await getUserFromDynamo(phone);
 
@@ -72,7 +114,7 @@ export async function saveUserToDynamo(phone: string, language?: string): Promis
     if (language && language !== existing.language) {
       await docClient.send(
         new UpdateCommand({
-          TableName: TABLE_NAME,
+          TableName: KHET_SATHI_USERS_TABLE,
           Key: { phone },
           UpdateExpression: "SET #lang = :lang",
           ExpressionAttributeNames: { "#lang": "language" },
@@ -92,7 +134,7 @@ export async function saveUserToDynamo(phone: string, language?: string): Promis
 
   await docClient.send(
     new PutCommand({
-      TableName: TABLE_NAME,
+      TableName: KHET_SATHI_USERS_TABLE,
       Item: user,
     })
   );
@@ -101,14 +143,48 @@ export async function saveUserToDynamo(phone: string, language?: string): Promis
 }
 
 export async function getUserFromDynamo(phone: string): Promise<DynamoUser | undefined> {
-  await ensureTable();
+  await ensureKhetSathiUsersTable();
 
   const result = await docClient.send(
     new GetCommand({
-      TableName: TABLE_NAME,
+      TableName: KHET_SATHI_USERS_TABLE,
       Key: { phone },
     })
   );
 
   return result.Item as DynamoUser | undefined;
+}
+
+export async function saveUserCase(data: UserCaseData): Promise<UserCaseData> {
+  await ensureUsercasesTable();
+
+  const caseData: UserCaseData = {
+    ...data,
+    timestamp: data.timestamp || new Date().toISOString(),
+  };
+
+  await docClient.send(
+    new PutCommand({
+      TableName: USERCASES_TABLE,
+      Item: caseData,
+    })
+  );
+
+  return caseData;
+}
+
+export async function getUserCases(phone: string): Promise<UserCaseData[]> {
+  await ensureUsercasesTable();
+
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: USERCASES_TABLE,
+      KeyConditionExpression: "phone = :phone",
+      ExpressionAttributeValues: {
+        ":phone": phone,
+      },
+    })
+  );
+
+  return (result.Items as UserCaseData[]) || [];
 }

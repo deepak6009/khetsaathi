@@ -3,9 +3,10 @@ import { createServer, type Server } from "http";
 import multer from "multer";
 import { uploadToS3 } from "./services/s3Service";
 import { detectDisease } from "./services/diseaseService";
-import { generateTreatmentPlan } from "./services/geminiService";
+import { generateChatReply, extractCropAndLocation, detectPlanIntent, generateConversationalPlan, getGreeting, type ChatMessage } from "./services/chatService";
 import { saveUserToDynamo } from "./services/dynamoService";
-import { treatmentPlanRequestSchema, languageSchema, phoneSchema } from "@shared/schema";
+import { saveUserCase } from "./services/dynamoService";
+import { phoneSchema, languageSchema } from "@shared/schema";
 import { z } from "zod";
 import { log } from "./index";
 
@@ -21,11 +22,55 @@ const upload = multer({
   },
 });
 
-const formFieldsSchema = z.object({
-  crop: z.string().min(1, "Crop name is required"),
-  location: z.string().min(1, "Location is required"),
-  language: languageSchema,
-  summary: z.string().min(1, "Description is required"),
+const chatMessageSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string(),
+  })),
+  language: z.string(),
+  diagnosis: z.record(z.any()).nullable().optional(),
+  planGenerated: z.boolean().optional(),
+  diagnosisAvailable: z.boolean().optional(),
+});
+
+const extractSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string(),
+  })),
+});
+
+const diagnoseFromChatSchema = z.object({
+  imageUrls: z.array(z.string()).min(1),
+  crop: z.string().min(1),
+  location: z.string().min(1),
+  language: z.string(),
+});
+
+const planIntentSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string(),
+  })),
+});
+
+const generatePlanSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string(),
+  })),
+  diagnosis: z.record(z.any()),
+  language: z.string(),
+  imageUrls: z.array(z.string()),
+});
+
+const saveUsercaseSchema = z.object({
+  phone: z.string().min(10),
+  conversationSummary: z.string(),
+  diagnosis: z.record(z.any()).optional(),
+  treatmentPlan: z.string().optional(),
+  language: z.string().optional(),
+  imageUrls: z.array(z.string()).optional(),
 });
 
 export async function registerRoutes(
@@ -44,10 +89,8 @@ export async function registerRoutes(
       if (!validation.success) {
         return res.status(400).json({ message: validation.error.errors.map(e => e.message).join(", ") });
       }
-
       const { phone } = validation.data;
       const user = await saveUserToDynamo(phone);
-
       log(`User registered: ${phone}`);
       return res.json({ success: true, user });
     } catch (error: any) {
@@ -58,18 +101,13 @@ export async function registerRoutes(
 
   app.post("/api/set-language", async (req, res) => {
     try {
-      const schema = z.object({
-        phone: z.string().min(10),
-        language: languageSchema,
-      });
+      const schema = z.object({ phone: z.string().min(10), language: languageSchema });
       const validation = schema.safeParse(req.body);
       if (!validation.success) {
         return res.status(400).json({ message: validation.error.errors.map(e => e.message).join(", ") });
       }
-
       const { phone, language } = validation.data;
       const user = await saveUserToDynamo(phone, language);
-
       return res.json({ success: true, user });
     } catch (error: any) {
       log(`Set language error: ${error.message}`);
@@ -77,78 +115,138 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/diagnose", upload.array("images", 3), async (req, res) => {
+  app.post("/api/upload-images", upload.array("images", 3), async (req, res) => {
     try {
       const files = req.files as Express.Multer.File[];
       if (!files || files.length === 0) {
         return res.status(400).json({ message: "At least one image is required" });
       }
-
-      const fieldValidation = formFieldsSchema.safeParse(req.body);
-      if (!fieldValidation.success) {
-        return res.status(400).json({ message: fieldValidation.error.errors.map(e => e.message).join(", ") });
-      }
-
-      const { crop, location, language, summary } = fieldValidation.data;
-
       log(`Uploading ${files.length} images to S3...`);
       const imageUrls = await Promise.all(
         files.map((file) => uploadToS3(file.buffer, file.originalname, file.mimetype))
       );
       log(`Images uploaded: ${imageUrls.join(", ")}`);
-
-      log("Calling disease detection API...");
-      const diagnosisResponse = await detectDisease({
-        images: imageUrls,
-        crop,
-        location,
-        language,
-        summary,
-      });
-      log("Disease detection complete");
-
-      let result = diagnosisResponse;
-      if (typeof result === "string") {
-        try { result = JSON.parse(result); } catch {}
-      }
-
-      if (result && typeof result === "object") {
-        const normalized: Record<string, any> = {};
-        for (const [key, value] of Object.entries(result)) {
-          const snakeKey = key.replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "").replace(/\s+/g, "_");
-          normalized[snakeKey] = value;
-        }
-        result = normalized;
-      }
-
-      return res.json(result);
+      return res.json({ success: true, imageUrls });
     } catch (error: any) {
-      log(`Diagnose error: ${error.message}`);
-      return res.status(500).json({ message: error.message || "Diagnosis failed" });
+      log(`Upload images error: ${error.message}`);
+      return res.status(500).json({ message: "Failed to upload images" });
     }
   });
 
-  app.post("/api/treatment-plan", async (req, res) => {
+  app.get("/api/chat/greeting", (req, res) => {
+    const language = (req.query.language as string) || "English";
+    const greeting = getGreeting(language);
+    return res.json({ greeting });
+  });
+
+  app.post("/api/chat/message", async (req, res) => {
     try {
-      const validation = treatmentPlanRequestSchema.safeParse(req.body);
+      const validation = chatMessageSchema.safeParse(req.body);
       if (!validation.success) {
         return res.status(400).json({ message: validation.error.errors.map(e => e.message).join(", ") });
       }
+      const { messages, language, diagnosis, planGenerated, diagnosisAvailable } = validation.data;
+      const reply = await generateChatReply(messages, language, diagnosis, planGenerated, diagnosisAvailable);
+      return res.json({ reply });
+    } catch (error: any) {
+      log(`Chat message error: ${error.message}`);
+      return res.status(500).json({ message: "Failed to generate response" });
+    }
+  });
 
-      const { diagnosis, crop, location, language, summary } = validation.data;
+  app.post("/api/chat/extract", async (req, res) => {
+    try {
+      const validation = extractSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors.map(e => e.message).join(", ") });
+      }
+      const { messages } = validation.data;
+      const extracted = await extractCropAndLocation(messages);
+      return res.json(extracted);
+    } catch (error: any) {
+      log(`Extract info error: ${error.message}`);
+      return res.status(500).json({ message: "Failed to extract info" });
+    }
+  });
 
-      if (!process.env.GEMINI_API_KEY) {
-        return res.status(500).json({ message: "Gemini API key is not configured" });
+  app.post("/api/chat/diagnose", async (req, res) => {
+    try {
+      const validation = diagnoseFromChatSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors.map(e => e.message).join(", ") });
+      }
+      const { imageUrls, crop, location, language } = validation.data;
+      log(`Diagnosing from chat: crop=${crop}, location=${location}`);
+      const result = await detectDisease({ images: imageUrls, crop, location, language });
+
+      let diagnosis = result;
+      if (typeof diagnosis === "string") {
+        try { diagnosis = JSON.parse(diagnosis); } catch {}
+      }
+      if (diagnosis && diagnosis.diagnosis) {
+        diagnosis = diagnosis.diagnosis;
       }
 
-      log("Generating treatment plan with Gemini...");
-      const plan = await generateTreatmentPlan({ diagnosis, crop, location: location || "", language, summary: summary || "" });
-      log("Treatment plan generated");
+      return res.json({ success: true, diagnosis });
+    } catch (error: any) {
+      log(`Chat diagnose error: ${error.message}`);
+      return res.status(500).json({ message: "Diagnosis failed" });
+    }
+  });
 
+  app.post("/api/chat/detect-plan-intent", async (req, res) => {
+    try {
+      const validation = planIntentSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors.map(e => e.message).join(", ") });
+      }
+      const { messages } = validation.data;
+      const wantsPlan = await detectPlanIntent(messages);
+      return res.json({ wantsPlan });
+    } catch (error: any) {
+      log(`Plan intent error: ${error.message}`);
+      return res.status(500).json({ message: "Failed to detect intent" });
+    }
+  });
+
+  app.post("/api/chat/generate-plan", async (req, res) => {
+    try {
+      const validation = generatePlanSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors.map(e => e.message).join(", ") });
+      }
+      const { messages, diagnosis, language, imageUrls } = validation.data;
+      log("Generating treatment plan from conversation...");
+      const plan = await generateConversationalPlan(messages, diagnosis, language, imageUrls);
+      log("Treatment plan generated");
       return res.json({ plan });
     } catch (error: any) {
-      log(`Treatment plan error: ${error.message}`);
-      return res.status(500).json({ message: error.message || "Plan generation failed" });
+      log(`Generate plan error: ${error.message}`);
+      return res.status(500).json({ message: "Plan generation failed" });
+    }
+  });
+
+  app.post("/api/save-usercase", async (req, res) => {
+    try {
+      const validation = saveUsercaseSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: validation.error.errors.map(e => e.message).join(", ") });
+      }
+      const data = validation.data;
+      const saved = await saveUserCase({
+        phone: data.phone,
+        timestamp: new Date().toISOString(),
+        conversationSummary: data.conversationSummary,
+        diagnosis: data.diagnosis,
+        treatmentPlan: data.treatmentPlan,
+        language: data.language,
+        imageUrls: data.imageUrls,
+      });
+      log(`User case saved for ${data.phone}`);
+      return res.json({ success: true, usercase: saved });
+    } catch (error: any) {
+      log(`Save usercase error: ${error.message}`);
+      return res.status(500).json({ message: "Failed to save case" });
     }
   });
 

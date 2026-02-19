@@ -19,15 +19,6 @@ export const phoneSchema = z.object({
   phone: z.string().min(10).max(15).regex(/^\+?\d{10,15}$/, "Enter a valid phone number"),
 });
 
-export const diagnoseRequestSchema = z.object({
-  images: z.array(z.string()).min(1).max(3),
-  crop: z.string().min(1),
-  location: z.string().min(1),
-  language: languageSchema,
-  summary: z.string().min(1),
-});
-export type DiagnoseRequest = z.infer<typeof diagnoseRequestSchema>;
-
 export const diagnosisResultSchema = z.object({
   crop_identified: z.string().optional(),
   disease: z.string().optional(),
@@ -39,12 +30,3 @@ export const diagnosisResultSchema = z.object({
   immediate_action: z.union([z.string(), z.array(z.string())]).optional(),
 });
 export type DiagnosisResult = z.infer<typeof diagnosisResultSchema>;
-
-export const treatmentPlanRequestSchema = z.object({
-  diagnosis: diagnosisResultSchema,
-  crop: z.string(),
-  location: z.string(),
-  language: languageSchema,
-  summary: z.string(),
-});
-export type TreatmentPlanRequest = z.infer<typeof treatmentPlanRequestSchema>;

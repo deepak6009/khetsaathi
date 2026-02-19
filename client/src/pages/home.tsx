@@ -1,42 +1,58 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import type { Language, DiagnosisResult } from "@shared/schema";
+import type { Language } from "@shared/schema";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Leaf, Upload, X, Camera, Stethoscope, Calendar, Sprout, MapPin, FileText, Phone, Globe, ArrowRight, ArrowLeft, Check } from "lucide-react";
-import { DiagnosisCard } from "@/components/diagnosis-card";
+import { Leaf, Upload, X, Camera, Phone, Globe, ArrowRight, Check, Send, Bot } from "lucide-react";
 import { TreatmentPlan } from "@/components/treatment-plan";
 import { motion, AnimatePresence } from "framer-motion";
 
-type Step = "phone" | "language" | "diagnose";
+type Step = "phone" | "language" | "upload" | "chat";
+const stepOrder: Step[] = ["phone", "language", "upload", "chat"];
 
-const stepOrder: Step[] = ["phone", "language", "diagnose"];
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+type ChatPhase = "gathering" | "diagnosing" | "diagnosed" | "asking_plan" | "generating_plan" | "plan_ready";
 
 export default function Home() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
   const [currentStep, setCurrentStep] = useState<Step>("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [language, setLanguage] = useState<Language>("English");
-  const [cropName, setCropName] = useState("");
-  const [location, setLocation] = useState("");
-  const [summary, setSummary] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
-  const [diagnosis, setDiagnosis] = useState<DiagnosisResult | null>(null);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [chatPhase, setChatPhase] = useState<ChatPhase>("gathering");
+  const [extractedCrop, setExtractedCrop] = useState<string | null>(null);
+  const [extractedLocation, setExtractedLocation] = useState<string | null>(null);
+  const [diagnosis, setDiagnosis] = useState<Record<string, any> | null>(null);
   const [treatmentPlan, setTreatmentPlan] = useState<string | null>(null);
+  const [diagnosisInProgress, setDiagnosisInProgress] = useState(false);
 
   const stepIndex = stepOrder.indexOf(currentStep);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length + selectedFiles.length > 3) {
-      toast({ title: "Maximum 3 images allowed", variant: "destructive" });
+      toast({ title: labels.maxImages[language], variant: "destructive" });
       return;
     }
     const newFiles = [...selectedFiles, ...files].slice(0, 3);
@@ -45,7 +61,7 @@ export default function Home() {
     previews.forEach((p) => URL.revokeObjectURL(p));
     setPreviews(newPreviews);
     if (fileInputRef.current) fileInputRef.current.value = "";
-  }, [selectedFiles, previews, toast]);
+  }, [selectedFiles, previews, toast, language]);
 
   const removeImage = useCallback((index: number) => {
     URL.revokeObjectURL(previews[index]);
@@ -60,18 +76,11 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: phoneNumber }),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Failed to register");
-      }
+      if (!res.ok) throw new Error((await res.json()).message || "Failed");
       return res.json();
     },
-    onSuccess: () => {
-      setCurrentStep("language");
-    },
-    onError: (err: Error) => {
-      toast({ title: err.message, variant: "destructive" });
-    },
+    onSuccess: () => setCurrentStep("language"),
+    onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
   });
 
   const setLanguageMutation = useMutation({
@@ -81,148 +90,235 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: phoneNumber, language: lang }),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Failed");
-      }
+      if (!res.ok) throw new Error((await res.json()).message || "Failed");
       return res.json();
     },
-    onSuccess: () => {
-      setCurrentStep("diagnose");
-    },
-    onError: (err: Error) => {
-      toast({ title: err.message, variant: "destructive" });
-    },
+    onSuccess: () => setCurrentStep("upload"),
+    onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
   });
 
-  const diagnoseMutation = useMutation({
+  const uploadMutation = useMutation({
     mutationFn: async () => {
       const formData = new FormData();
       selectedFiles.forEach((file) => formData.append("images", file));
-      formData.append("crop", cropName);
-      formData.append("location", location);
-      formData.append("language", language);
-      formData.append("summary", summary);
-      const res = await fetch("/api/diagnose", { method: "POST", body: formData });
-      if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err || "Diagnosis failed");
-      }
-      return res.json() as Promise<DiagnosisResult>;
+      const res = await fetch("/api/upload-images", { method: "POST", body: formData });
+      if (!res.ok) throw new Error((await res.json()).message || "Upload failed");
+      return res.json() as Promise<{ imageUrls: string[] }>;
     },
-    onSuccess: (data) => {
-      setDiagnosis(data);
-      setTreatmentPlan(null);
-      toast({ title: getLabel("diagnosisComplete") });
+    onSuccess: async (data) => {
+      setImageUrls(data.imageUrls);
+      setCurrentStep("chat");
+      const greetRes = await fetch(`/api/chat/greeting?language=${language}`);
+      const greetData = await greetRes.json();
+      setMessages([{ role: "assistant", content: greetData.greeting }]);
     },
-    onError: (error: Error) => {
-      toast({ title: getLabel("diagnosisFailed"), description: error.message, variant: "destructive" });
-    },
+    onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
   });
 
-  const planMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch("/api/treatment-plan", {
+  const sendMessage = useCallback(async () => {
+    const text = chatInput.trim();
+    if (!text || isTyping) return;
+
+    const userMsg: ChatMessage = { role: "user", content: text };
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
+    setChatInput("");
+    setIsTyping(true);
+
+    try {
+      const [chatRes, extractRes] = await Promise.all([
+        fetch("/api/chat/message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: updatedMessages,
+            language,
+            diagnosis: chatPhase === "diagnosed" || chatPhase === "asking_plan" ? diagnosis : null,
+            planGenerated: chatPhase === "plan_ready",
+          }),
+        }),
+        (chatPhase === "gathering" && (!extractedCrop || !extractedLocation))
+          ? fetch("/api/chat/extract", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ messages: updatedMessages }),
+            })
+          : Promise.resolve(null),
+      ]);
+
+      const chatData = await chatRes.json();
+      if (!chatRes.ok) throw new Error(chatData.message);
+
+      const assistantMsg: ChatMessage = { role: "assistant", content: chatData.reply };
+      const newMessages = [...updatedMessages, assistantMsg];
+      setMessages(newMessages);
+
+      if (extractRes && extractRes.ok) {
+        const extracted = await extractRes.json();
+        const newCrop = extracted.crop || extractedCrop;
+        const newLocation = extracted.location || extractedLocation;
+        if (extracted.crop) setExtractedCrop(extracted.crop);
+        if (extracted.location) setExtractedLocation(extracted.location);
+
+        if (newCrop && newLocation && !diagnosisInProgress && chatPhase === "gathering") {
+          setChatPhase("diagnosing");
+          setDiagnosisInProgress(true);
+          triggerDiagnosis(newCrop, newLocation, newMessages);
+        }
+      }
+
+      if (chatPhase === "asking_plan") {
+        const intentRes = await fetch("/api/chat/detect-plan-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: newMessages }),
+        });
+        if (intentRes.ok) {
+          const intentData = await intentRes.json();
+          if (intentData.wantsPlan) {
+            setChatPhase("generating_plan");
+            triggerPlanGeneration(newMessages);
+          }
+        }
+      }
+    } catch (err: any) {
+      toast({ title: err.message || "Chat failed", variant: "destructive" });
+    } finally {
+      setIsTyping(false);
+    }
+  }, [chatInput, messages, isTyping, phoneNumber, language, imageUrls, chatPhase, diagnosis, extractedCrop, extractedLocation, diagnosisInProgress, toast]);
+
+  const triggerDiagnosis = async (crop: string, location: string, currentMessages: ChatMessage[]) => {
+    try {
+      const res = await fetch("/api/chat/diagnose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ diagnosis, crop: cropName, location, language, summary }),
+        body: JSON.stringify({ imageUrls, crop, location, language }),
       });
-      if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err || "Plan generation failed");
+      if (!res.ok) throw new Error("Diagnosis failed");
+      const data = await res.json();
+      setDiagnosis(data.diagnosis);
+      setChatPhase("diagnosed");
+
+      const followUpRes = await fetch("/api/chat/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: currentMessages,
+          language,
+          diagnosis: data.diagnosis,
+          diagnosisAvailable: true,
+        }),
+      });
+      if (followUpRes.ok) {
+        const followUpData = await followUpRes.json();
+        setMessages((prev) => [...prev, { role: "assistant", content: followUpData.reply }]);
+        setChatPhase("asking_plan");
       }
-      return res.json() as Promise<{ plan: string }>;
-    },
-    onSuccess: (data) => {
+
+      const conversationSummary = currentMessages
+        .map((m) => `${m.role === "user" ? "Farmer" : "AI"}: ${m.content}`)
+        .join("\n");
+      await fetch("/api/save-usercase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: phoneNumber,
+          conversationSummary,
+          diagnosis: data.diagnosis,
+          language,
+          imageUrls,
+        }),
+      });
+    } catch (err: any) {
+      toast({ title: "Could not diagnose disease", variant: "destructive" });
+    } finally {
+      setDiagnosisInProgress(false);
+    }
+  };
+
+  const triggerPlanGeneration = async (currentMessages: ChatMessage[]) => {
+    try {
+      setIsTyping(true);
+      const res = await fetch("/api/chat/generate-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: currentMessages, diagnosis, language, imageUrls }),
+      });
+      if (!res.ok) throw new Error("Plan generation failed");
+      const data = await res.json();
       setTreatmentPlan(data.plan);
-      toast({ title: getLabel("planGenerated") });
-    },
-    onError: (error: Error) => {
-      toast({ title: getLabel("planFailed"), description: error.message, variant: "destructive" });
-    },
-  });
+      setChatPhase("plan_ready");
 
-  const canDiagnose = selectedFiles.length > 0 && cropName.trim() && location.trim() && summary.trim();
+      setMessages((prev) => [...prev, { role: "assistant", content: labels.planReady[language] }]);
 
-  const labels: Record<string, Record<Language, string>> = {
-    title: { English: "KhetSathi", Telugu: "ఖేత్ సాథీ", Hindi: "खेतसाथी" },
-    subtitle: { English: "AI Crop Doctor", Telugu: "AI పంట వైద్యుడు", Hindi: "AI फसल डॉक्टर" },
-    tagline: { English: "Your smart farming companion", Telugu: "మీ తెలివైన వ్యవసాయ సహచరుడు", Hindi: "आपका स्मार्ट खेती साथी" },
-    enterPhone: { English: "Enter your phone number", Telugu: "మీ ఫోన్ నంబర్ ఎంటర్ చేయండి", Hindi: "अपना फोन नंबर डालें" },
-    phoneHint: { English: "Start by entering your phone number", Telugu: "మీ ఫోన్ నంబర్ ఎంటర్ చేయడం ద్వారా ప్రారంభించండి", Hindi: "अपना फोन नंबर डालकर शुरू करें" },
-    continueBtn: { English: "Continue", Telugu: "కొనసాగించు", Hindi: "आगे बढ़ें" },
-    registering: { English: "Please wait...", Telugu: "దయచేసి వేచి ఉండండి...", Hindi: "कृपया प्रतीक्षा करें..." },
-    chooseLanguage: { English: "Choose your language", Telugu: "మీ భాషను ఎంచుకోండి", Hindi: "अपनी भाषा चुनें" },
-    languageHint: { English: "All results will be shown in your language", Telugu: "అన్ని ఫలితాలు మీ భాషలో చూపబడతాయి", Hindi: "सभी परिणाम आपकी भाषा में दिखाए जाएंगे" },
-    continue: { English: "Continue", Telugu: "కొనసాగించు", Hindi: "आगे बढ़ें" },
-    cropName: { English: "Crop Name", Telugu: "పంట పేరు", Hindi: "फसल का नाम" },
-    cropPlaceholder: { English: "e.g., Tomato, Rice, Cotton", Telugu: "ఉదా., టమాటా, వరి, పత్తి", Hindi: "जैसे, टमाटर, चावल, कपास" },
-    location: { English: "Location", Telugu: "ప్రదేశం", Hindi: "स्थान" },
-    locationPlaceholder: { English: "e.g., Andhra Pradesh", Telugu: "ఉదా., ఆంధ్ర ప్రదేశ్", Hindi: "जैसे, आंध्र प्रदेश" },
-    description: { English: "Describe the Problem", Telugu: "సమస్యను వివరించండి", Hindi: "समस्या का वर्णन करें" },
-    descPlaceholder: { English: "What do you see on your crops? Yellow leaves, spots, wilting...", Telugu: "మీ పంటలపై ఏమి కనిపిస్తోంది? పసుపు ఆకులు, మచ్చలు, వాడిపోవడం...", Hindi: "आपकी फसलों पर क्या दिख रहा है? पीली पत्तियाँ, धब्बे, मुरझाना..." },
-    uploadImages: { English: "Upload Crop Photos", Telugu: "పంట ఫోటోలు అప్‌లోడ్ చేయండి", Hindi: "फसल की फोटो अपलोड करें" },
-    uploadHint: { English: "Take 1-3 photos of the sick crop", Telugu: "ఆరోగ్యంగా లేని పంట యొక్క 1-3 ఫోటోలు తీయండి", Hindi: "बीमार फसल की 1-3 फोटो लें" },
-    diagnose: { English: "Find Disease", Telugu: "వ్యాధిని కనుగొనండి", Hindi: "बीमारी खोजें" },
-    diagnosing: { English: "Checking...", Telugu: "తనిఖీ చేస్తోంది...", Hindi: "जाँच हो रही है..." },
-    generatePlan: { English: "Get 7-Day Treatment Plan", Telugu: "7-రోజుల చికిత్స ప్రణాళిక పొందండి", Hindi: "7-दिन की उपचार योजना पाएं" },
-    generatingPlan: { English: "Creating Plan...", Telugu: "ప్రణాళిక రూపొందిస్తోంది...", Hindi: "योजना बन रही है..." },
-    diagnosisComplete: { English: "Disease found!", Telugu: "వ్యాధి కనుగొనబడింది!", Hindi: "बीमारी मिल गई!" },
-    diagnosisFailed: { English: "Could not diagnose", Telugu: "నిర్ధారణ చేయలేకపోయింది", Hindi: "निदान नहीं हो सका" },
-    planGenerated: { English: "Treatment plan ready!", Telugu: "చికిత్స ప్రణాళిక సిద్ధం!", Hindi: "उपचार योजना तैयार!" },
-    planFailed: { English: "Plan failed", Telugu: "ప్రణాళిక విఫలమైంది", Hindi: "योजना विफल रही" },
-    addMore: { English: "Add More", Telugu: "మరిన్ని", Hindi: "और जोड़ें" },
-    step: { English: "Step", Telugu: "దశ", Hindi: "चरण" },
-    of: { English: "of", Telugu: "లో", Hindi: "में से" },
-    back: { English: "Back", Telugu: "వెనుకకు", Hindi: "वापस" },
-    newDiagnosis: { English: "New Diagnosis", Telugu: "కొత్త నిర్ధారణ", Hindi: "नया निदान" },
+      const conversationSummary = currentMessages
+        .map((m) => `${m.role === "user" ? "Farmer" : "AI"}: ${m.content}`)
+        .join("\n");
+
+      await fetch("/api/save-usercase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: phoneNumber,
+          conversationSummary,
+          diagnosis,
+          treatmentPlan: data.plan,
+          language,
+          imageUrls,
+        }),
+      });
+    } catch (err: any) {
+      toast({ title: "Plan generation failed", variant: "destructive" });
+    } finally {
+      setIsTyping(false);
+    }
   };
 
-  function getLabel(key: string): string {
-    return labels[key]?.[language] || labels[key]?.English || key;
-  }
-
-  const resetDiagnosis = () => {
-    setSelectedFiles([]);
-    previews.forEach((p) => URL.revokeObjectURL(p));
-    setPreviews([]);
-    setCropName("");
-    setLocation("");
-    setSummary("");
-    setDiagnosis(null);
-    setTreatmentPlan(null);
+  const labels = {
+    title: { English: "KhetSathi", Telugu: "ఖేత్ సాథీ", Hindi: "खेतसाथी" } as Record<Language, string>,
+    subtitle: { English: "AI Crop Doctor", Telugu: "AI పంట వైద్యుడు", Hindi: "AI फसल डॉक्टर" } as Record<Language, string>,
+    tagline: { English: "Your smart farming companion", Telugu: "మీ తెలివైన వ్యవసాయ సహచరుడు", Hindi: "आपका स्मार्ट खेती साथी" } as Record<Language, string>,
+    enterPhone: { English: "Enter your phone number", Telugu: "మీ ఫోన్ నంబర్ ఎంటర్ చేయండి", Hindi: "अपना फोन नंबर डालें" } as Record<Language, string>,
+    phoneHint: { English: "Start by entering your phone number", Telugu: "మీ ఫోన్ నంబర్ ఎంటర్ చేయడం ద్వారా ప్రారంభించండి", Hindi: "अपना फोन नंबर डालकर शुरू करें" } as Record<Language, string>,
+    continueBtn: { English: "Continue", Telugu: "కొనసాగించు", Hindi: "आगे बढ़ें" } as Record<Language, string>,
+    registering: { English: "Please wait...", Telugu: "దయచేసి వేచి ఉండండి...", Hindi: "कृपया प्रतीक्षा करें..." } as Record<Language, string>,
+    chooseLanguage: { English: "Choose your language", Telugu: "మీ భాషను ఎంచుకోండి", Hindi: "अपनी भाषा चुनें" } as Record<Language, string>,
+    languageHint: { English: "All results will be shown in your language", Telugu: "అన్ని ఫలితాలు మీ భాషలో చూపబడతాయి", Hindi: "सभी परिणाम आपकी भाषा में दिखाए जाएंगे" } as Record<Language, string>,
+    uploadPhotos: { English: "Upload Crop Photos", Telugu: "పంట ఫోటోలు అప్‌లోడ్ చేయండి", Hindi: "फसल की फोटो अपलोड करें" } as Record<Language, string>,
+    uploadHint: { English: "Take 1-3 photos of the affected crop", Telugu: "ఆరోగ్యంగా లేని పంట యొక్క 1-3 ఫోటోలు తీయండి", Hindi: "प्रभावित फसल की 1-3 फोटो लें" } as Record<Language, string>,
+    addMore: { English: "Add More", Telugu: "మరిన్ని", Hindi: "और जोड़ें" } as Record<Language, string>,
+    next: { English: "Next", Telugu: "తదుపరి", Hindi: "अगला" } as Record<Language, string>,
+    uploading: { English: "Uploading...", Telugu: "అప్‌లోడ్ అవుతోంది...", Hindi: "अपलोड हो रहा है..." } as Record<Language, string>,
+    maxImages: { English: "Maximum 3 images allowed", Telugu: "గరిష్టంగా 3 చిత్రాలు అనుమతించబడతాయి", Hindi: "अधिकतम 3 छवियाँ अनुमत हैं" } as Record<Language, string>,
+    typeMessage: { English: "Type your message...", Telugu: "మీ సందేశం టైప్ చేయండి...", Hindi: "अपना संदेश टाइप करें..." } as Record<Language, string>,
+    planReady: { English: "Your 7-day treatment plan is ready! You can see it below.", Telugu: "మీ 7-రోజుల చికిత్స ప్రణాళిక సిద్ధంగా ఉంది! దిగువ చూడండి.", Hindi: "आपकी 7-दिन की उपचार योजना तैयार है! नीचे देखें." } as Record<Language, string>,
+    analyzing: { English: "Analyzing your crop images...", Telugu: "మీ పంట చిత్రాలను విశ్లేషిస్తోంది...", Hindi: "आपकी फसल की तस्वीरों का विश्लेषण..." } as Record<Language, string>,
+    footer: { English: "Built for Farmers", Telugu: "రైతుల కోసం", Hindi: "किसानों के लिए" } as Record<Language, string>,
   };
 
-  const stepLabels: Record<Step, string> = {
-    phone: "1",
-    language: "2",
-    diagnose: "3",
-  };
+  const getLabel = (key: keyof typeof labels) => labels[key][language] || labels[key].English;
+
+  const stepLabels: Record<Step, string> = { phone: "1", language: "2", upload: "3", chat: "4" };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
       <header className="bg-primary text-primary-foreground">
-        <div className="max-w-lg mx-auto px-4 py-5 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-center gap-2 mb-1"
-          >
-            <Leaf className="w-7 h-7" />
-            <h1 className="text-2xl font-bold tracking-tight" data-testid="text-app-title">
+        <div className="max-w-lg mx-auto px-4 py-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <Leaf className="w-6 h-6" />
+            <h1 className="text-xl font-bold tracking-tight" data-testid="text-app-title">
               {getLabel("title")}
             </h1>
-          </motion.div>
-          <p className="text-sm text-primary-foreground/80" data-testid="text-app-subtitle">
+          </div>
+          <p className="text-xs text-primary-foreground/80" data-testid="text-app-subtitle">
             {getLabel("subtitle")} — {getLabel("tagline")}
           </p>
         </div>
       </header>
 
-      {/* Progress Steps */}
       <div className="bg-card border-b border-border">
-        <div className="max-w-lg mx-auto px-4 py-3">
+        <div className="max-w-lg mx-auto px-4 py-2.5">
           <div className="flex items-center justify-between gap-1">
             {stepOrder.map((step, idx) => {
               const isActive = idx === stepIndex;
@@ -230,16 +326,12 @@ export default function Home() {
               return (
                 <div key={step} className="flex items-center flex-1 gap-1">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                      isDone
-                        ? "bg-primary text-primary-foreground"
-                        : isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                      isDone ? "bg-primary text-primary-foreground" : isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                     }`}
                     data-testid={`step-indicator-${step}`}
                   >
-                    {isDone ? <Check className="w-4 h-4" /> : stepLabels[step]}
+                    {isDone ? <Check className="w-3.5 h-3.5" /> : stepLabels[step]}
                   </div>
                   {idx < stepOrder.length - 1 && (
                     <div className={`flex-1 h-0.5 rounded-full ${idx < stepIndex ? "bg-primary" : "bg-muted"}`} />
@@ -251,61 +343,31 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-6">
+      <main className={`flex-1 max-w-lg mx-auto w-full ${currentStep === "chat" ? "flex flex-col" : "px-4 py-6"}`}>
         <AnimatePresence mode="wait">
-          {/* Step 1: Phone Number */}
           {currentStep === "phone" && (
-            <motion.div
-              key="phone"
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -30 }}
-              transition={{ duration: 0.25 }}
-            >
+            <motion.div key="phone" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }}>
               <Card className="p-5 sm:p-6">
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                     <Phone className="w-8 h-8 text-primary" />
                   </div>
-                  <h2 className="text-xl font-semibold mb-1" data-testid="text-phone-title">
-                    {getLabel("enterPhone")}
-                  </h2>
+                  <h2 className="text-xl font-semibold mb-1" data-testid="text-phone-title">{getLabel("enterPhone")}</h2>
                   <p className="text-sm text-muted-foreground">{getLabel("phoneHint")}</p>
                 </div>
-
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="phone" className="text-sm font-medium mb-1.5 block">
-                      Phone Number
-                    </Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="+91 98765 43210"
-                      value={phoneNumber}
+                    <Label htmlFor="phone" className="text-sm font-medium mb-1.5 block">Phone Number</Label>
+                    <Input id="phone" type="tel" placeholder="+91 98765 43210" value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9+]/g, ""))}
-                      className="text-lg text-center tracking-wider"
-                      data-testid="input-phone"
-                    />
+                      className="text-lg text-center tracking-wider" data-testid="input-phone" />
                   </div>
-
-                  <Button
-                    className="w-full gap-2"
-                    onClick={() => registerPhoneMutation.mutate()}
-                    disabled={phoneNumber.length < 10 || registerPhoneMutation.isPending}
-                    data-testid="button-continue-phone"
-                  >
+                  <Button className="w-full gap-2" onClick={() => registerPhoneMutation.mutate()}
+                    disabled={phoneNumber.length < 10 || registerPhoneMutation.isPending} data-testid="button-continue-phone">
                     {registerPhoneMutation.isPending ? (
-                      <>
-                        <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                        {getLabel("registering")}
-                      </>
+                      <><span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />{getLabel("registering")}</>
                     ) : (
-                      <>
-                        {getLabel("continueBtn")}
-                        <ArrowRight className="w-4 h-4" />
-                      </>
+                      <>{getLabel("continueBtn")}<ArrowRight className="w-4 h-4" /></>
                     )}
                   </Button>
                 </div>
@@ -313,67 +375,39 @@ export default function Home() {
             </motion.div>
           )}
 
-          {/* Step 2: Language Selection */}
           {currentStep === "language" && (
-            <motion.div
-              key="language"
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -30 }}
-              transition={{ duration: 0.25 }}
-            >
+            <motion.div key="language" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }}>
               <Card className="p-5 sm:p-6">
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                     <Globe className="w-8 h-8 text-primary" />
                   </div>
-                  <h2 className="text-xl font-semibold mb-1" data-testid="text-language-title">
-                    {getLabel("chooseLanguage")}
-                  </h2>
+                  <h2 className="text-xl font-semibold mb-1" data-testid="text-language-title">{getLabel("chooseLanguage")}</h2>
                   <p className="text-sm text-muted-foreground">{getLabel("languageHint")}</p>
                 </div>
-
                 <div className="space-y-3">
                   {(["English", "Telugu", "Hindi"] as Language[]).map((lang) => (
-                    <button
-                      key={lang}
-                      onClick={() => setLanguage(lang)}
+                    <button key={lang} onClick={() => setLanguage(lang)}
                       className={`w-full p-4 rounded-md border-2 text-left flex items-center gap-3 transition-colors ${
-                        language === lang
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover-elevate"
-                      }`}
-                      data-testid={`button-lang-${lang.toLowerCase()}`}
-                    >
+                        language === lang ? "border-primary bg-primary/5" : "border-border hover-elevate"
+                      }`} data-testid={`button-lang-${lang.toLowerCase()}`}>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                         language === lang ? "border-primary bg-primary" : "border-muted-foreground"
                       }`}>
                         {language === lang && <Check className="w-3 h-3 text-primary-foreground" />}
                       </div>
                       <div>
-                        <p className="font-medium text-foreground">
-                          {lang === "Telugu" ? "తెలుగు" : lang === "Hindi" ? "हिन्दी" : "English"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {lang === "Telugu" ? "Telugu" : lang === "Hindi" ? "Hindi" : "English"}
-                        </p>
+                        <p className="font-medium text-foreground">{lang === "Telugu" ? "తెలుగు" : lang === "Hindi" ? "हिन्दी" : "English"}</p>
+                        <p className="text-xs text-muted-foreground">{lang}</p>
                       </div>
                     </button>
                   ))}
-
-                  <Button
-                    className="w-full gap-2 mt-2"
-                    onClick={() => setLanguageMutation.mutate(language)}
-                    disabled={setLanguageMutation.isPending}
-                    data-testid="button-continue-language"
-                  >
+                  <Button className="w-full gap-2 mt-2" onClick={() => setLanguageMutation.mutate(language)}
+                    disabled={setLanguageMutation.isPending} data-testid="button-continue-language">
                     {setLanguageMutation.isPending ? (
                       <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
                     ) : (
-                      <>
-                        {getLabel("continue")}
-                        <ArrowRight className="w-4 h-4" />
-                      </>
+                      <>{getLabel("continueBtn")}<ArrowRight className="w-4 h-4" /></>
                     )}
                   </Button>
                 </div>
@@ -381,156 +415,130 @@ export default function Home() {
             </motion.div>
           )}
 
-          {/* Step 3: Crop Diagnosis */}
-          {currentStep === "diagnose" && (
-            <motion.div
-              key="diagnose"
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -30 }}
-              transition={{ duration: 0.25 }}
-              className="space-y-5"
-            >
-              {!diagnosis ? (
-                <Card className="p-5 sm:p-6">
-                  <div className="text-center mb-5">
-                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                      <Camera className="w-8 h-8 text-primary" />
-                    </div>
-                    <h2 className="text-xl font-semibold mb-1" data-testid="text-diagnose-title">
-                      {getLabel("uploadImages")}
-                    </h2>
-                    <p className="text-sm text-muted-foreground">{getLabel("uploadHint")}</p>
+          {currentStep === "upload" && (
+            <motion.div key="upload" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }}>
+              <Card className="p-5 sm:p-6">
+                <div className="text-center mb-5">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                    <Camera className="w-8 h-8 text-primary" />
                   </div>
-
-                  <div className="space-y-4">
-                    {/* Image Upload */}
-                    <div className="flex flex-wrap items-start gap-3">
-                      {previews.map((preview, idx) => (
-                        <div key={idx} className="relative group w-24 h-24 rounded-md overflow-hidden border border-border">
-                          <img src={preview} alt={`Crop ${idx + 1}`} className="w-full h-full object-cover" data-testid={`img-preview-${idx}`} />
-                          <button
-                            onClick={() => removeImage(idx)}
-                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            style={{ visibility: "visible" }}
-                            data-testid={`button-remove-image-${idx}`}
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
-                      {selectedFiles.length < 3 && (
-                        <button
-                          onClick={() => fileInputRef.current?.click()}
-                          className="w-24 h-24 rounded-md border-2 border-dashed border-primary/40 flex flex-col items-center justify-center gap-1 text-primary hover-elevate cursor-pointer"
-                          data-testid="button-upload-image"
-                        >
-                          <Upload className="w-6 h-6" />
-                          <span className="text-xs font-medium">{selectedFiles.length > 0 ? getLabel("addMore") : "Upload"}</span>
+                  <h2 className="text-xl font-semibold mb-1" data-testid="text-upload-title">{getLabel("uploadPhotos")}</h2>
+                  <p className="text-sm text-muted-foreground">{getLabel("uploadHint")}</p>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-start gap-3">
+                    {previews.map((preview, idx) => (
+                      <div key={idx} className="relative group w-24 h-24 rounded-md overflow-hidden border border-border">
+                        <img src={preview} alt={`Crop ${idx + 1}`} className="w-full h-full object-cover" data-testid={`img-preview-${idx}`} />
+                        <button onClick={() => removeImage(idx)}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ visibility: "visible" }} data-testid={`button-remove-image-${idx}`}>
+                          <X className="w-3 h-3" />
                         </button>
-                      )}
-                    </div>
-                    <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" data-testid="input-file-upload" />
-
-                    {/* Crop Name */}
-                    <div className="space-y-1.5">
-                      <Label htmlFor="crop" className="flex items-center gap-2 text-sm font-medium">
-                        <Sprout className="w-4 h-4 text-primary" />
-                        {getLabel("cropName")}
-                      </Label>
-                      <Input id="crop" placeholder={getLabel("cropPlaceholder")} value={cropName} onChange={(e) => setCropName(e.target.value)} data-testid="input-crop-name" />
-                    </div>
-
-                    {/* Location */}
-                    <div className="space-y-1.5">
-                      <Label htmlFor="location" className="flex items-center gap-2 text-sm font-medium">
-                        <MapPin className="w-4 h-4 text-primary" />
-                        {getLabel("location")}
-                      </Label>
-                      <Input id="location" placeholder={getLabel("locationPlaceholder")} value={location} onChange={(e) => setLocation(e.target.value)} data-testid="input-location" />
-                    </div>
-
-                    {/* Description */}
-                    <div className="space-y-1.5">
-                      <Label htmlFor="summary" className="flex items-center gap-2 text-sm font-medium">
-                        <FileText className="w-4 h-4 text-primary" />
-                        {getLabel("description")}
-                      </Label>
-                      <Textarea id="summary" placeholder={getLabel("descPlaceholder")} value={summary} onChange={(e) => setSummary(e.target.value)} rows={3} data-testid="input-summary" />
-                    </div>
-
-                    {/* Diagnose Button */}
-                    <Button
-                      className="w-full gap-2"
-                      onClick={() => diagnoseMutation.mutate()}
-                      disabled={!canDiagnose || diagnoseMutation.isPending}
-                      data-testid="button-diagnose"
-                    >
-                      {diagnoseMutation.isPending ? (
-                        <>
-                          <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                          {getLabel("diagnosing")}
-                        </>
-                      ) : (
-                        <>
-                          <Stethoscope className="w-4 h-4" />
-                          {getLabel("diagnose")}
-                        </>
-                      )}
-                    </Button>
+                      </div>
+                    ))}
+                    {selectedFiles.length < 3 && (
+                      <button onClick={() => fileInputRef.current?.click()}
+                        className="w-24 h-24 rounded-md border-2 border-dashed border-primary/40 flex flex-col items-center justify-center gap-1 text-primary hover-elevate cursor-pointer"
+                        data-testid="button-upload-image">
+                        <Upload className="w-6 h-6" />
+                        <span className="text-xs font-medium">{selectedFiles.length > 0 ? getLabel("addMore") : "Upload"}</span>
+                      </button>
+                    )}
                   </div>
-                </Card>
-              ) : (
-                <>
-                  <DiagnosisCard diagnosis={diagnosis} language={language} />
+                  <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" data-testid="input-file-upload" />
+                  <Button className="w-full gap-2" onClick={() => uploadMutation.mutate()}
+                    disabled={selectedFiles.length === 0 || uploadMutation.isPending} data-testid="button-next-upload">
+                    {uploadMutation.isPending ? (
+                      <><span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />{getLabel("uploading")}</>
+                    ) : (
+                      <>{getLabel("next")}<ArrowRight className="w-4 h-4" /></>
+                    )}
+                  </Button>
+                </div>
+              </Card>
+            </motion.div>
+          )}
 
-                  {!treatmentPlan && (
-                    <div className="flex flex-col gap-3">
-                      <Button
-                        className="w-full gap-2"
-                        onClick={() => planMutation.mutate()}
-                        disabled={planMutation.isPending}
-                        data-testid="button-generate-plan"
-                      >
-                        {planMutation.isPending ? (
-                          <>
-                            <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                            {getLabel("generatingPlan")}
-                          </>
-                        ) : (
-                          <>
-                            <Calendar className="w-4 h-4" />
-                            {getLabel("generatePlan")}
-                          </>
-                        )}
-                      </Button>
-                      <Button variant="outline" className="w-full" onClick={resetDiagnosis} data-testid="button-new-diagnosis">
-                        {getLabel("newDiagnosis")}
-                      </Button>
+          {currentStep === "chat" && (
+            <motion.div key="chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col flex-1 h-full">
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3" data-testid="chat-messages">
+                {messages.map((msg, idx) => (
+                  <div key={idx} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    {msg.role === "assistant" && (
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
+                        <Bot className="w-4 h-4 text-primary" />
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                        msg.role === "user"
+                          ? "bg-primary text-primary-foreground rounded-br-sm"
+                          : "bg-muted text-foreground rounded-bl-sm"
+                      }`}
+                      data-testid={`chat-message-${idx}`}
+                    >
+                      {msg.content}
                     </div>
-                  )}
+                  </div>
+                ))}
 
-                  {treatmentPlan && (
-                    <>
-                      <TreatmentPlan plan={treatmentPlan} language={language} />
-                      <Button variant="outline" className="w-full" onClick={resetDiagnosis} data-testid="button-new-diagnosis-after-plan">
-                        {getLabel("newDiagnosis")}
-                      </Button>
-                    </>
-                  )}
-                </>
+                {(isTyping || diagnosisInProgress) && (
+                  <div className="flex gap-2 justify-start">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
+                      <Bot className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3 text-sm">
+                      <div className="flex gap-1.5 items-center">
+                        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                        {diagnosisInProgress && (
+                          <span className="text-xs text-muted-foreground ml-2">{getLabel("analyzing")}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div ref={chatEndRef} />
+              </div>
+
+              {treatmentPlan && (
+                <div className="px-4 pb-2">
+                  <TreatmentPlan plan={treatmentPlan} language={language} />
+                </div>
               )}
+
+              <div className="border-t border-border px-3 py-2.5 bg-card">
+                <div className="flex gap-2 items-center max-w-lg mx-auto">
+                  <Input
+                    ref={chatInputRef}
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                    placeholder={getLabel("typeMessage")}
+                    className="flex-1"
+                    disabled={isTyping}
+                    data-testid="input-chat"
+                  />
+                  <Button size="icon" onClick={sendMessage} disabled={!chatInput.trim() || isTyping} data-testid="button-send-chat">
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border mt-auto">
-        <div className="max-w-lg mx-auto px-4 py-3 text-center text-xs text-muted-foreground">
-          KhetSathi &mdash; {language === "Telugu" ? "రైతుల కోసం" : language === "Hindi" ? "किसानों के लिए" : "Built for Farmers"}
-        </div>
-      </footer>
+      {currentStep !== "chat" && (
+        <footer className="border-t border-border mt-auto">
+          <div className="max-w-lg mx-auto px-4 py-3 text-center text-xs text-muted-foreground">
+            KhetSathi &mdash; {getLabel("footer")}
+          </div>
+        </footer>
+      )}
     </div>
   );
 }
