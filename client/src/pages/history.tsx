@@ -114,13 +114,13 @@ export default function HistoryPage() {
                     {item.diagnosis?.crop_identified && (
                       <p className={`text-[13px] text-gray-700 truncate mt-0.5 ${langSpaceTight(lang)}`}>{item.diagnosis.crop_identified}</p>
                     )}
-                    <p className="text-[11px] text-gray-600 mt-1.5 flex items-center gap-1 font-medium">
-                      <CalendarDays className="w-3 h-3" />
+                    <p className="text-[12px] text-gray-600 mt-1.5 flex items-center gap-1 font-semibold">
+                      <CalendarDays className="w-3.5 h-3.5" />
                       {new Date(item.timestamp).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
                   </div>
                   {item.diagnosis?.severity && (
-                    <Badge variant="secondary" className="text-[10px] font-bold rounded-full px-2.5 py-0.5">{item.diagnosis.severity}</Badge>
+                    <Badge variant="secondary" className="text-[12px] font-bold rounded-full px-2.5 py-1">{item.diagnosis.severity}</Badge>
                   )}
                 </div>
                 {item.pdfUrl && item.pdfUrl !== "pdf_generation_failed" && (

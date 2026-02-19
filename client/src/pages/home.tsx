@@ -130,7 +130,7 @@ function AppHeader({
               data-testid="button-back-header"
             >
               <ChevronLeft className="w-5 h-5" />
-              <span className="text-[13px] font-medium">{backLabel}</span>
+              <span className="text-[14px] font-semibold">{backLabel}</span>
             </button>
           ) : null}
         </div>
@@ -647,7 +647,7 @@ export default function Home() {
                       >
                         {isDone ? <Check className="w-4 h-4" /> : idx + 1}
                       </div>
-                      <span className={`text-[12px] font-semibold ${langSpace(language)} ${isActive || isDone ? "text-gray-900" : "text-gray-500"}`}>
+                      <span className={`text-[13px] font-bold ${langSpace(language)} ${isActive || isDone ? "text-gray-900" : "text-gray-500"}`}>
                         {getLabel(stepLabelKey)}
                       </span>
                     </button>
@@ -696,7 +696,7 @@ export default function Home() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-gray-900 text-base leading-relaxed">{nativeNames[lang]}</p>
-                            <p className="text-[13px] text-gray-600 mt-0.5">{lang}</p>
+                            <p className="text-[14px] text-gray-600 font-medium mt-0.5">{lang}</p>
                           </div>
                           <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200`}
                             style={isSelected ? { borderColor: "#6BC30D", backgroundColor: "#6BC30D" } : { borderColor: "#d1d5db" }}
@@ -739,7 +739,7 @@ export default function Home() {
                   </div>
                   <div className="space-y-5">
                     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                      <label htmlFor="phone" className={`text-[13px] font-semibold mb-2.5 block text-gray-700 uppercase tracking-wider ${langSpace(language)}`}>{getLabel("phoneLabel")}</label>
+                      <label htmlFor="phone" className={`text-[14px] font-bold mb-2.5 block text-gray-700 uppercase tracking-wider ${langSpace(language)}`}>{getLabel("phoneLabel")}</label>
                       <Input
                         id="phone" type="tel" placeholder="+91 98765 43210" value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9+]/g, ""))}
@@ -937,13 +937,13 @@ export default function Home() {
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className={`text-[11px] text-gray-600 font-medium ${langSpaceTight(language)}`}>{getGreeting()}</p>
-              <p className="text-[15px] font-bold text-gray-900 leading-tight">{formatPhone(phoneNumber)}</p>
+              <p className={`text-[13px] text-gray-600 font-semibold ${langSpaceTight(language)}`}>{getGreeting()}</p>
+              <p className="text-[16px] font-bold text-gray-900 leading-tight">{formatPhone(phoneNumber)}</p>
             </div>
             {userLocation && (
               <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-                <MapPin className="w-3 h-3" style={{ color: "#6BC30D" }} />
-                <span className="text-[11px] text-gray-700 font-medium max-w-[100px] truncate">{userLocation}</span>
+                <MapPin className="w-3.5 h-3.5" style={{ color: "#6BC30D" }} />
+                <span className="text-[13px] text-gray-700 font-semibold max-w-[100px] truncate">{userLocation}</span>
               </div>
             )}
           </motion.div>
@@ -961,7 +961,7 @@ export default function Home() {
                 </div>
                 <div className="text-left flex-1">
                   <p className={`text-xl font-extrabold leading-tight tracking-tight ${langSpace(language)}`}>{getLabel("scanCrop")}</p>
-                  <p className={`text-[13px] text-white/80 mt-1.5 font-medium ${langSpace(language)}`}>{getLabel("scanDesc")}</p>
+                  <p className={`text-[14px] text-white/85 mt-1.5 font-semibold ${langSpace(language)}`}>{getLabel("scanDesc")}</p>
                 </div>
                 <ChevronRight className="w-5 h-5 text-white/60 flex-shrink-0" />
               </div>
@@ -996,7 +996,7 @@ export default function Home() {
 
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.16 }}>
             <div className="flex items-center justify-between gap-2 mb-3">
-              <h3 className={`text-[13px] font-semibold text-gray-600 uppercase tracking-wider ${langSpaceTight(language)}`}>{getLabel("recentDiagnoses")}</h3>
+              <h3 className={`text-[14px] font-bold text-gray-600 uppercase tracking-wider ${langSpaceTight(language)}`}>{getLabel("recentDiagnoses")}</h3>
               {recentHistory.length > 0 && (
                 <Link href={`/history?phone=${encodeURIComponent(phoneNumber)}&lang=${language}`}>
                   <span className="text-[13px] font-semibold flex items-center gap-0.5" style={{ color: "#6BC30D" }}>
@@ -1037,13 +1037,13 @@ export default function Home() {
                         {item.diagnosis?.crop_identified && (
                           <p className={`text-[13px] text-gray-700 truncate mt-0.5 ${langSpaceTight(language)}`}>{item.diagnosis.crop_identified}</p>
                         )}
-                        <p className="text-[11px] text-gray-600 mt-1.5 flex items-center gap-1 font-medium">
-                          <CalendarDays className="w-3 h-3" />
+                        <p className="text-[12px] text-gray-600 mt-1.5 flex items-center gap-1 font-semibold">
+                          <CalendarDays className="w-3.5 h-3.5" />
                           {new Date(item.timestamp).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                         </p>
                       </div>
                       {item.diagnosis?.severity && (
-                        <Badge variant="secondary" className="text-[10px] font-bold rounded-full px-2.5 py-0.5">{item.diagnosis.severity}</Badge>
+                        <Badge variant="secondary" className="text-[12px] font-bold rounded-full px-2.5 py-1">{item.diagnosis.severity}</Badge>
                       )}
                     </div>
                   </div>
@@ -1090,7 +1090,7 @@ export default function Home() {
                 </div>
                 <div className="text-center">
                   <span className={`text-base font-bold text-gray-900 block ${langSpace(language)}`}>{getLabel("tapToCapture")}</span>
-                  <span className="text-[13px] text-gray-600 mt-1 block">1-3 photos</span>
+                  <span className="text-[14px] text-gray-600 font-medium mt-1 block">1-3 photos</span>
                 </div>
               </button>
             ) : (
@@ -1098,7 +1098,7 @@ export default function Home() {
                 <div className="flex items-center justify-between gap-2">
                   <span className={`text-[15px] font-semibold text-gray-900 ${langSpaceTight(language)}`}>{selectedFiles.length} {getLabel("photosSelected")}</span>
                   {selectedFiles.length < 3 && (
-                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} data-testid="button-add-more-images" className="gap-1.5 rounded-xl text-[13px] font-semibold h-9">
+                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} data-testid="button-add-more-images" className="gap-1.5 rounded-xl text-[14px] font-bold h-9">
                       <Plus className="w-4 h-4" /><span className={langSpaceTight(language)}>{getLabel("addMore")}</span>
                     </Button>
                   )}
@@ -1164,22 +1164,22 @@ export default function Home() {
                   <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#6BC30D15" }}>
                     <Camera className="w-3.5 h-3.5" style={{ color: "#6BC30D" }} />
                   </div>
-                  <span className={`text-[13px] font-semibold text-gray-800 ${langSpaceTight(language)}`}>{getLabel("yourCropPhotos")}</span>
+                  <span className={`text-[14px] font-bold text-gray-900 ${langSpaceTight(language)}`}>{getLabel("yourCropPhotos")}</span>
                 </div>
                 {diagnosisInProgress || chatPhase === "diagnosing" ? (
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200/60">
-                    <Loader2 className="w-3 h-3 animate-spin text-amber-500" />
-                    <span className={`text-[11px] font-semibold text-amber-600 ${langSpaceTight(language)}`}>{getLabel("analyzingDisease")}</span>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />
+                    <span className={`text-[12px] font-bold text-amber-700 ${langSpaceTight(language)}`}>{getLabel("analyzingDisease")}</span>
                   </div>
                 ) : diagnosis ? (
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ backgroundColor: "#6BC30D12", border: "1px solid #6BC30D25" }}>
-                    <Check className="w-3 h-3" style={{ color: "#6BC30D" }} />
-                    <span className={`text-[11px] font-semibold ${langSpaceTight(language)}`} style={{ color: "#4a9a08" }}>{getLabel("diseaseDetected")}</span>
+                    <Check className="w-3.5 h-3.5" style={{ color: "#6BC30D" }} />
+                    <span className={`text-[12px] font-bold ${langSpaceTight(language)}`} style={{ color: "#4a9a08" }}>{getLabel("diseaseDetected")}</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50/80 border border-blue-100">
-                    <Mic className="w-3 h-3 text-blue-500" />
-                    <span className={`text-[11px] font-semibold text-blue-600 ${langSpaceTight(language)}`}>{getLabel("chatWhileProcessing")}</span>
+                    <Mic className="w-3.5 h-3.5 text-blue-500" />
+                    <span className={`text-[12px] font-bold text-blue-700 ${langSpaceTight(language)}`}>{getLabel("chatWhileProcessing")}</span>
                   </div>
                 )}
               </div>
@@ -1223,8 +1223,8 @@ export default function Home() {
               <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm border-2 border-white" style={{ background: "linear-gradient(135deg, #6BC30D 0%, #4a9a08 100%)" }}>
                 <Languages className="w-4 h-4 text-white" />
               </div>
-              <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-white/90 backdrop-blur-sm shadow-md p-4 border border-gray-100/80" data-testid="card-plan-language-picker">
-                <p className={`text-[14px] font-bold mb-3 text-gray-900 ${langSpace(language)}`}>{getLabel("choosePlanLanguage")}</p>
+              <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-white shadow-md p-4 border border-gray-100" data-testid="card-plan-language-picker">
+                <p className={`text-[15px] font-bold mb-3 text-gray-900 ${langSpace(language)}`}>{getLabel("choosePlanLanguage")}</p>
                 <div className="flex flex-wrap gap-2">
                   {(["English", "Telugu", "Hindi"] as Language[]).map((lang) => (
                     <Button key={lang} variant="outline" size="sm" onClick={() => handlePlanLanguageSelect(lang)} className="rounded-xl font-semibold border-green-200 hover:bg-green-50 hover:border-green-300 transition-colors" data-testid={`button-plan-lang-${lang.toLowerCase()}`}>
@@ -1249,10 +1249,10 @@ export default function Home() {
                         <FileText className="w-6 h-6 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-[14px] font-bold text-gray-900 truncate ${langSpaceTight(language)}`} data-testid="text-pdf-title">
+                        <p className={`text-[15px] font-bold text-gray-900 truncate ${langSpaceTight(language)}`} data-testid="text-pdf-title">
                           {planLanguage === "Telugu" ? "7-రోజుల ప్రణాళిక" : planLanguage === "Hindi" ? "7-दिन की योजना" : "7-Day Treatment Plan"}
                         </p>
-                        <p className="text-[12px] text-gray-500 font-medium">PDF &middot; {planLanguage === "Telugu" ? "తెలుగు" : planLanguage === "Hindi" ? "हिन्दी" : "English"}</p>
+                        <p className="text-[13px] text-gray-600 font-semibold">PDF &middot; {planLanguage === "Telugu" ? "తెలుగు" : planLanguage === "Hindi" ? "हिन्दी" : "English"}</p>
                       </div>
                       <a href={pdfUrl} download target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
                         className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors" style={{ backgroundColor: "#6BC30D15" }}
@@ -1271,10 +1271,10 @@ export default function Home() {
                     </div>
                   </div>
                 )}
-                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                  <span className={`text-xs text-gray-500 font-medium ${langSpaceTight(language)}`}>{getLabel("getPlanIn")}:</span>
+                <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+                  <span className={`text-[13px] text-gray-600 font-semibold ${langSpaceTight(language)}`}>{getLabel("getPlanIn")}:</span>
                   {(["English", "Telugu", "Hindi"] as Language[]).filter((l) => l !== planLanguage).map((lang) => (
-                    <Button key={lang} variant="ghost" size="sm" onClick={() => regeneratePlanInLanguage(lang)} disabled={isTyping} className="text-xs h-7 rounded-lg font-semibold hover:bg-green-50" data-testid={`button-regen-plan-${lang.toLowerCase()}`}>
+                    <Button key={lang} variant="ghost" size="sm" onClick={() => regeneratePlanInLanguage(lang)} disabled={isTyping} className="text-[13px] h-8 rounded-lg font-bold hover:bg-green-50" data-testid={`button-regen-plan-${lang.toLowerCase()}`}>
                       <Languages className="w-3 h-3 mr-1" />
                       {lang === "English" ? "English" : lang === "Telugu" ? "తెలుగు" : "हिन्दी"}
                     </Button>
