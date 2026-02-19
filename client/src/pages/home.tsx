@@ -1141,13 +1141,13 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(180deg, #f0fdf4 0%, #f8fafc 40%, #ffffff 100%)" }}>
       <AppHeader
         showBack
         onBack={goToDashboard}
         backLabel={getLabel("back")}
         rightContent={
-          <Button variant="ghost" size="sm" className="text-gray-700 gap-1.5 text-xs h-8 rounded-lg px-2" data-testid="button-new-diagnosis"
+          <Button variant="ghost" size="sm" className="gap-1.5 text-xs h-8 rounded-xl px-2.5 font-semibold" style={{ color: "#6BC30D" }} data-testid="button-new-diagnosis"
             onClick={() => { goToDashboard(); setTimeout(goToCapture, 100); }}>
             <RotateCcw className="w-3.5 h-3.5" />
             <span className={langSpaceTight(language)}>{getLabel("newDiagnosis")}</span>
@@ -1156,105 +1156,113 @@ export default function Home() {
       />
 
       <main className="flex-1 flex flex-col">
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3" data-testid="chat-messages">
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" data-testid="chat-messages">
           {imageUrls.length > 0 && (
-            <div className="rounded-2xl bg-white shadow-sm border border-gray-100 p-3 mb-1" data-testid="card-uploaded-images">
-              <div className="flex items-center gap-2 mb-2.5">
-                <Camera className="w-4 h-4" style={{ color: "#6BC30D" }} />
-                <span className={`text-[13px] font-semibold text-gray-800 ${langSpaceTight(language)}`}>{getLabel("yourCropPhotos")}</span>
-              </div>
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {imageUrls.map((url, idx) => (
-                  <img key={idx} src={url} alt={`Crop ${idx + 1}`} className="w-20 h-20 rounded-xl object-cover flex-shrink-0 border border-gray-100 shadow-sm" data-testid={`img-chat-upload-${idx}`} />
-                ))}
-              </div>
-              <div className="mt-2.5 flex items-center gap-2">
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl bg-white/80 backdrop-blur-sm shadow-sm border border-green-100/60 p-3.5" data-testid="card-uploaded-images">
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#6BC30D15" }}>
+                    <Camera className="w-3.5 h-3.5" style={{ color: "#6BC30D" }} />
+                  </div>
+                  <span className={`text-[13px] font-semibold text-gray-800 ${langSpaceTight(language)}`}>{getLabel("yourCropPhotos")}</span>
+                </div>
                 {diagnosisInProgress || chatPhase === "diagnosing" ? (
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
-                    <span className={`text-[12px] font-semibold text-amber-700 ${langSpaceTight(language)}`}>{getLabel("analyzingDisease")}</span>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200/60">
+                    <Loader2 className="w-3 h-3 animate-spin text-amber-500" />
+                    <span className={`text-[11px] font-semibold text-amber-600 ${langSpaceTight(language)}`}>{getLabel("analyzingDisease")}</span>
                   </div>
                 ) : diagnosis ? (
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border" style={{ backgroundColor: "#6BC30D10", borderColor: "#6BC30D30" }}>
-                    <Check className="w-3.5 h-3.5" style={{ color: "#6BC30D" }} />
-                    <span className={`text-[12px] font-semibold ${langSpaceTight(language)}`} style={{ color: "#4a9a08" }}>{getLabel("diseaseDetected")}</span>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ backgroundColor: "#6BC30D12", border: "1px solid #6BC30D25" }}>
+                    <Check className="w-3 h-3" style={{ color: "#6BC30D" }} />
+                    <span className={`text-[11px] font-semibold ${langSpaceTight(language)}`} style={{ color: "#4a9a08" }}>{getLabel("diseaseDetected")}</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200">
-                    <Mic className="w-3.5 h-3.5 text-blue-600" />
-                    <span className={`text-[12px] font-semibold text-blue-700 ${langSpaceTight(language)}`}>{getLabel("chatWhileProcessing")}</span>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50/80 border border-blue-100">
+                    <Mic className="w-3 h-3 text-blue-500" />
+                    <span className={`text-[11px] font-semibold text-blue-600 ${langSpaceTight(language)}`}>{getLabel("chatWhileProcessing")}</span>
                   </div>
                 )}
               </div>
-            </div>
+              <div className="flex gap-2 overflow-x-auto pb-0.5">
+                {imageUrls.map((url, idx) => (
+                  <img key={idx} src={url} alt={`Crop ${idx + 1}`} className="w-[72px] h-[72px] rounded-xl object-cover flex-shrink-0 border-2 border-white shadow-md" data-testid={`img-chat-upload-${idx}`} />
+                ))}
+              </div>
+            </motion.div>
           )}
 
           {messages.map((msg, idx) => (
-            <div key={idx} className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+            <motion.div key={idx} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: idx === messages.length - 1 ? 0.1 : 0 }}
+              className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               {msg.role === "assistant" && (
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: "#6BC30D15" }}>
-                  <Bot className="w-4 h-4" style={{ color: "#6BC30D" }} />
+                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm border-2 border-white" style={{ background: "linear-gradient(135deg, #6BC30D 0%, #4a9a08 100%)" }}>
+                  <Leaf className="w-4 h-4 text-white" />
                 </div>
               )}
               <div
-                className={`max-w-[80%] rounded-2xl px-4 py-3 text-[14px] ${langSpace(language)} ${
+                className={`max-w-[78%] px-4 py-3 text-[14px] leading-relaxed ${langSpace(language)} ${
                   msg.role === "user"
-                    ? "text-white rounded-br-md shadow-md"
-                    : "bg-white text-gray-900 rounded-bl-md shadow-sm border border-gray-100"
+                    ? "text-white rounded-2xl rounded-br-sm shadow-lg"
+                    : "text-gray-800 rounded-2xl rounded-bl-sm shadow-sm bg-white/90 backdrop-blur-sm border border-gray-100/80"
                 }`}
-                style={msg.role === "user" ? { backgroundColor: "#032B22" } : undefined}
+                style={msg.role === "user" ? { background: "linear-gradient(135deg, #032B22 0%, #064e3b 100%)" } : undefined}
                 data-testid={`chat-message-${idx}`}
               >
                 {msg.content}
               </div>
-            </div>
+              {msg.role === "user" && (
+                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm border-2 border-white" style={{ backgroundColor: "#032B22" }}>
+                  <User className="w-4 h-4 text-white/80" />
+                </div>
+              )}
+            </motion.div>
           ))}
 
           {chatPhase === "awaiting_plan_language" && (
-            <div className="flex gap-2.5 justify-start">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: "#6BC30D15" }}>
-                <Languages className="w-4 h-4" style={{ color: "#6BC30D" }} />
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2.5 justify-start">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm border-2 border-white" style={{ background: "linear-gradient(135deg, #6BC30D 0%, #4a9a08 100%)" }}>
+                <Languages className="w-4 h-4 text-white" />
               </div>
-              <div className="max-w-[85%] rounded-2xl bg-white shadow-md p-4 rounded-bl-md border border-gray-100" data-testid="card-plan-language-picker">
+              <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-white/90 backdrop-blur-sm shadow-md p-4 border border-gray-100/80" data-testid="card-plan-language-picker">
                 <p className={`text-[14px] font-bold mb-3 text-gray-900 ${langSpace(language)}`}>{getLabel("choosePlanLanguage")}</p>
                 <div className="flex flex-wrap gap-2">
                   {(["English", "Telugu", "Hindi"] as Language[]).map((lang) => (
-                    <Button key={lang} variant="outline" size="sm" onClick={() => handlePlanLanguageSelect(lang)} className="rounded-xl font-semibold" data-testid={`button-plan-lang-${lang.toLowerCase()}`}>
+                    <Button key={lang} variant="outline" size="sm" onClick={() => handlePlanLanguageSelect(lang)} className="rounded-xl font-semibold border-green-200 hover:bg-green-50 hover:border-green-300 transition-colors" data-testid={`button-plan-lang-${lang.toLowerCase()}`}>
                       {lang === "English" ? "English" : lang === "Telugu" ? "తెలుగు" : "हिन्दी"}
                     </Button>
                   ))}
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {treatmentPlan && planLanguage && (
-            <div className="flex gap-2.5 justify-start">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: "#6BC30D15" }}>
-                <Bot className="w-4 h-4" style={{ color: "#6BC30D" }} />
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2.5 justify-start">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm border-2 border-white" style={{ background: "linear-gradient(135deg, #6BC30D 0%, #4a9a08 100%)" }}>
+                <FileText className="w-4 h-4 text-white" />
               </div>
               <div className="max-w-[82%]">
                 {pdfUrl ? (
-                  <div className="bg-white rounded-2xl rounded-bl-md overflow-hidden shadow-md border border-gray-100 cursor-pointer active:scale-[0.98] transition-transform" onClick={() => window.open(pdfUrl, "_blank")} data-testid="card-pdf-preview">
+                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl rounded-bl-sm overflow-hidden shadow-lg border border-green-100/60 cursor-pointer active:scale-[0.98] transition-transform" onClick={() => window.open(pdfUrl, "_blank")} data-testid="card-pdf-preview">
                     <div className="px-4 py-3.5 flex items-center gap-3.5">
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm" style={{ backgroundColor: "#964B00" }}>
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm" style={{ background: "linear-gradient(135deg, #964B00 0%, #7a3d00 100%)" }}>
                         <FileText className="w-6 h-6 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-[14px] font-bold text-gray-900 truncate ${langSpaceTight(language)}`} data-testid="text-pdf-title">
                           {planLanguage === "Telugu" ? "7-రోజుల ప్రణాళిక" : planLanguage === "Hindi" ? "7-दिन की योजना" : "7-Day Treatment Plan"}
                         </p>
-                        <p className="text-[12px] text-gray-600 font-medium">PDF &middot; {planLanguage === "Telugu" ? "తెలుగు" : planLanguage === "Hindi" ? "हिन्दी" : "English"}</p>
+                        <p className="text-[12px] text-gray-500 font-medium">PDF &middot; {planLanguage === "Telugu" ? "తెలుగు" : planLanguage === "Hindi" ? "हिन्दी" : "English"}</p>
                       </div>
                       <a href={pdfUrl} download target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                        className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#6BC30D15" }}
+                        className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors" style={{ backgroundColor: "#6BC30D15" }}
                         data-testid="button-download-pdf">
-                        <Download className="w-4 h-4" style={{ color: "#6BC30D" }} />
+                        <Download className="w-4.5 h-4.5" style={{ color: "#6BC30D" }} />
                       </a>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border border-gray-100" data-testid="card-plan-text-fallback">
+                  <div className="bg-white/90 backdrop-blur-sm rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm border border-gray-100/80" data-testid="card-plan-text-fallback">
                     <div className="flex items-center gap-2">
                       <FileText className="w-4 h-4" style={{ color: "#6BC30D" }} />
                       <p className={`text-[14px] font-semibold text-gray-900 ${langSpaceTight(language)}`}>
@@ -1264,64 +1272,66 @@ export default function Home() {
                   </div>
                 )}
                 <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                  <span className={`text-xs text-gray-600 font-medium ${langSpaceTight(language)}`}>{getLabel("getPlanIn")}:</span>
+                  <span className={`text-xs text-gray-500 font-medium ${langSpaceTight(language)}`}>{getLabel("getPlanIn")}:</span>
                   {(["English", "Telugu", "Hindi"] as Language[]).filter((l) => l !== planLanguage).map((lang) => (
-                    <Button key={lang} variant="ghost" size="sm" onClick={() => regeneratePlanInLanguage(lang)} disabled={isTyping} className="text-xs h-7 rounded-lg font-semibold" data-testid={`button-regen-plan-${lang.toLowerCase()}`}>
+                    <Button key={lang} variant="ghost" size="sm" onClick={() => regeneratePlanInLanguage(lang)} disabled={isTyping} className="text-xs h-7 rounded-lg font-semibold hover:bg-green-50" data-testid={`button-regen-plan-${lang.toLowerCase()}`}>
                       <Languages className="w-3 h-3 mr-1" />
                       {lang === "English" ? "English" : lang === "Telugu" ? "తెలుగు" : "हिन्दी"}
                     </Button>
                   ))}
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {isTyping && (
-            <div className="flex gap-2.5 justify-start">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: "#6BC30D15" }}>
-                <Bot className="w-4 h-4" style={{ color: "#6BC30D" }} />
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2.5 justify-start">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm border-2 border-white" style={{ background: "linear-gradient(135deg, #6BC30D 0%, #4a9a08 100%)" }}>
+                <Leaf className="w-4 h-4 text-white" />
               </div>
-              <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3.5 shadow-sm border border-gray-100">
+              <div className="bg-white/90 backdrop-blur-sm rounded-2xl rounded-bl-sm px-4 py-3.5 shadow-sm border border-gray-100/80">
                 <div className="flex gap-1.5 items-center">
-                  <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: "#6BC30D60", animationDelay: "0ms" }} />
-                  <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: "#6BC30D60", animationDelay: "150ms" }} />
-                  <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: "#6BC30D60", animationDelay: "300ms" }} />
+                  <span className="w-2.5 h-2.5 rounded-full animate-bounce" style={{ backgroundColor: "#6BC30D", animationDelay: "0ms" }} />
+                  <span className="w-2.5 h-2.5 rounded-full animate-bounce" style={{ backgroundColor: "#6BC30D80", animationDelay: "150ms" }} />
+                  <span className="w-2.5 h-2.5 rounded-full animate-bounce" style={{ backgroundColor: "#6BC30D50", animationDelay: "300ms" }} />
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
           <div ref={chatEndRef} />
         </div>
 
         {isVoiceActive && (
-          <div className="border-t border-gray-100 bg-white">
+          <div className="border-t border-green-100 bg-white/90 backdrop-blur-sm">
             <VoiceChat phone={phoneNumber} language={language} onClose={() => setIsVoiceActive(false)} />
           </div>
         )}
 
-        <div className="border-t border-gray-200 px-4 py-3 bg-white pb-[env(safe-area-inset-bottom,10px)]">
-          <div className="flex gap-2 items-center max-w-lg mx-auto">
-            <Input
-              ref={chatInputRef}
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-              placeholder={getLabel("typeMessage")}
-              className="flex-1 h-11 rounded-xl bg-gray-50 border-gray-200 text-[14px]"
-              disabled={isTyping || chatPhase === "awaiting_plan_language" || isVoiceActive}
-              data-testid="input-chat"
-            />
+        <div className="border-t border-gray-100 px-4 py-3 bg-white/95 backdrop-blur-md pb-[env(safe-area-inset-bottom,10px)]" style={{ boxShadow: "0 -4px 20px rgba(0,0,0,0.03)" }}>
+          <div className="flex gap-2.5 items-center max-w-lg mx-auto">
+            <div className="flex-1 relative">
+              <Input
+                ref={chatInputRef}
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                placeholder={getLabel("typeMessage")}
+                className="h-12 rounded-2xl bg-gray-50/80 border-gray-200/60 text-[15px] pl-4 pr-4 focus:border-green-300 focus:ring-green-200/50 transition-colors"
+                disabled={isTyping || chatPhase === "awaiting_plan_language" || isVoiceActive}
+                data-testid="input-chat"
+              />
+            </div>
             <button onClick={() => setIsVoiceActive(!isVoiceActive)} disabled={isTyping}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${isVoiceActive ? "text-white shadow-md" : "bg-gray-50 border border-gray-200 text-gray-700"}`}
-              style={isVoiceActive ? { backgroundColor: "#6BC30D" } : undefined}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all active:scale-95 ${isVoiceActive ? "text-white shadow-lg" : "bg-gray-50/80 border border-gray-200/60 text-gray-600 hover:bg-gray-100"}`}
+              style={isVoiceActive ? { background: "linear-gradient(135deg, #6BC30D 0%, #4a9a08 100%)" } : undefined}
               data-testid="button-voice-call">
-              <Mic className="w-[18px] h-[18px]" />
+              <Mic className="w-5 h-5" />
             </button>
             <button onClick={sendMessage} disabled={!chatInput.trim() || isTyping || chatPhase === "awaiting_plan_language" || isVoiceActive}
-              className="w-11 h-11 rounded-xl text-white flex items-center justify-center flex-shrink-0 shadow-sm disabled:opacity-40 transition-opacity"
-              style={{ backgroundColor: "#6BC30D" }}
+              className="w-12 h-12 rounded-2xl text-white flex items-center justify-center flex-shrink-0 shadow-lg disabled:opacity-40 transition-all active:scale-95"
+              style={{ background: "linear-gradient(135deg, #6BC30D 0%, #4a9a08 100%)" }}
               data-testid="button-send-chat">
-              <Send className="w-[18px] h-[18px]" />
+              <Send className="w-5 h-5" />
             </button>
           </div>
         </div>
