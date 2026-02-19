@@ -121,12 +121,18 @@ export default function Home() {
   const extractedLocationRef = useRef(extractedLocation);
   const diagnosisRef = useRef(diagnosis);
   const diagnosisInProgressRef = useRef(diagnosisInProgress);
+  const imageUrlsRef = useRef(imageUrls);
+  const phoneRef = useRef(phoneNumber);
+  const languageRef = useRef(language);
 
   useEffect(() => { chatPhaseRef.current = chatPhase; }, [chatPhase]);
   useEffect(() => { extractedCropRef.current = extractedCrop; }, [extractedCrop]);
   useEffect(() => { extractedLocationRef.current = extractedLocation; }, [extractedLocation]);
   useEffect(() => { diagnosisRef.current = diagnosis; }, [diagnosis]);
   useEffect(() => { diagnosisInProgressRef.current = diagnosisInProgress; }, [diagnosisInProgress]);
+  useEffect(() => { imageUrlsRef.current = imageUrls; }, [imageUrls]);
+  useEffect(() => { phoneRef.current = phoneNumber; }, [phoneNumber]);
+  useEffect(() => { languageRef.current = language; }, [language]);
 
   const runExtractionAgent = useCallback(async (allMessages: ChatMessage[]) => {
     if (extractedCropRef.current && extractedLocationRef.current) return;
@@ -213,10 +219,14 @@ export default function Home() {
 
   const triggerDiagnosis = async (crop: string, location: string, currentMessages: ChatMessage[]) => {
     try {
+      const urls = imageUrlsRef.current;
+      const lang = languageRef.current;
+      const phone = phoneRef.current;
+
       const res = await fetch("/api/chat/diagnose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrls, crop, location, language }),
+        body: JSON.stringify({ imageUrls: urls, crop, location, language: lang }),
       });
       if (!res.ok) throw new Error("Diagnosis failed");
       const data = await res.json();
@@ -228,7 +238,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: currentMessages,
-          language,
+          language: lang,
           diagnosis: data.diagnosis,
           diagnosisAvailable: true,
         }),
@@ -246,11 +256,11 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: phoneNumber,
+          phone,
           conversationSummary,
           diagnosis: data.diagnosis,
-          language,
-          imageUrls,
+          language: lang,
+          imageUrls: urls,
         }),
       });
     } catch (err: any) {
@@ -264,17 +274,21 @@ export default function Home() {
     try {
       setIsTyping(true);
       const currentDiagnosis = diagnosisRef.current;
+      const lang = languageRef.current;
+      const urls = imageUrlsRef.current;
+      const phone = phoneRef.current;
+
       const res = await fetch("/api/chat/generate-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: currentMessages, diagnosis: currentDiagnosis, language, imageUrls }),
+        body: JSON.stringify({ messages: currentMessages, diagnosis: currentDiagnosis, language: lang, imageUrls: urls }),
       });
       if (!res.ok) throw new Error("Plan generation failed");
       const data = await res.json();
       setTreatmentPlan(data.plan);
       setChatPhase("plan_ready");
 
-      setMessages((prev) => [...prev, { role: "assistant", content: labels.planReady[language] }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: labels.planReady[lang] }]);
 
       const conversationSummary = currentMessages
         .map((m) => `${m.role === "user" ? "Farmer" : "AI"}: ${m.content}`)
@@ -284,12 +298,12 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: phoneNumber,
+          phone,
           conversationSummary,
           diagnosis: currentDiagnosis,
           treatmentPlan: data.plan,
-          language,
-          imageUrls,
+          language: lang,
+          imageUrls: urls,
         }),
       });
     } catch (err: any) {
