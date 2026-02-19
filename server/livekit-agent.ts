@@ -1,6 +1,15 @@
 import { defineAgent, type JobContext, cli, voice, ServerOptions } from '@livekit/agents';
-import * as google from '@livekit/agents-plugin-google';
+import * as openai from '@livekit/agents-plugin-openai';
 import { fileURLToPath } from 'node:url';
+import * as fs from 'node:fs';
+
+function log(msg: string) {
+  const line = `[voice ${new Date().toISOString()}] ${msg}`;
+  console.log(line);
+  try {
+    fs.appendFileSync('/tmp/voice-agent.log', line + '\n');
+  } catch {}
+}
 
 const KHETSATHI_VOICE_PROMPT = `MULTILINGUAL INSTRUCTION (CRITICAL - ALWAYS FOLLOW):
 You MUST detect the language the user is speaking in and ALWAYS respond in that SAME language.
@@ -61,106 +70,105 @@ HOW TO TALK:
 
 export default defineAgent({
   entry: async (ctx: JobContext) => {
-    await ctx.connect();
-
-    const participant = await ctx.waitForParticipant();
-    console.log(`[voice] Participant joined: ${participant.identity}`);
-
-    const metadata = ctx.room.metadata;
-    let language = 'English';
-    try {
-      if (metadata) {
-        const parsed = JSON.parse(metadata);
-        language = parsed.language || 'English';
-      }
-    } catch {}
+    log('Agent entry called');
 
     try {
-      const participantMeta = participant.metadata;
-      if (participantMeta) {
-        const parsed = JSON.parse(participantMeta);
-        language = parsed.language || language;
-      }
-    } catch {}
+      await ctx.connect();
+      log('Connected to room');
 
-    console.log(`[voice] Language: ${language}`);
+      const participant = await ctx.waitForParticipant();
+      log(`Participant joined: ${participant.identity}`);
 
-    const languageGreeting = language === 'Telugu'
-      ? 'Greet the farmer warmly in Telugu and ask their name.'
-      : language === 'Hindi'
-        ? 'Greet the farmer warmly in Hindi and ask their name.'
-        : 'Greet the farmer warmly in English and ask their name.';
+      const metadata = ctx.room.metadata;
+      let language = 'English';
+      try {
+        if (metadata) {
+          const parsed = JSON.parse(metadata);
+          language = parsed.language || 'English';
+        }
+      } catch {}
 
-    const model = new google.beta.realtime.RealtimeModel({
-      voice: 'Kore',
-      apiKey: process.env.GEMINI_API_KEY,
-      model: 'gemini-2.5-flash-native-audio-preview',
-      temperature: 0.7,
-      inputAudioTranscription: {},
-      outputAudioTranscription: {},
-    });
+      try {
+        const participantMeta = participant.metadata;
+        if (participantMeta) {
+          const parsed = JSON.parse(participantMeta);
+          language = parsed.language || language;
+        }
+      } catch {}
 
-    const agent = new voice.Agent({
-      instructions: KHETSATHI_VOICE_PROMPT + `\n\nThe farmer's preferred language is ${language}. Start the conversation in ${language}, but if they speak in a different language, switch to match them.`,
-      llm: model,
-      allowInterruptions: true,
-    });
+      log(`Language: ${language}`);
 
-    const session = new voice.AgentSession({
-      voiceOptions: {
-        userAwayTimeout: null,
-      },
-    } as any);
+      const languageGreeting = language === 'Telugu'
+        ? 'Greet the farmer warmly in Telugu and ask their name.'
+        : language === 'Hindi'
+          ? 'Greet the farmer warmly in Hindi and ask their name.'
+          : 'Greet the farmer warmly in English and ask their name.';
 
-    session.on('user_input_transcribed' as any, (ev: any) => {
-      if (ev.transcript && ev.isFinal) {
-        console.log(`[voice] Farmer said: ${ev.transcript}`);
-      }
-    });
+      log('Creating OpenAI RealtimeModel with gpt-4.1-mini');
 
-    session.on('agent_state_changed' as any, (ev: any) => {
-      console.log(`[voice] Agent state: ${ev.oldState} -> ${ev.newState}`);
-    });
+      const model = new openai.realtime.RealtimeModel({
+        apiKey: process.env.OPENAI_API_KEY!,
+        model: 'gpt-4.1-mini',
+        voice: 'coral',
+        temperature: 0.7,
+        modalities: ['text', 'audio'],
+        turnDetection: {
+          type: 'server_vad',
+          threshold: 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 500,
+        },
+      });
 
-    await session.start({
-      agent,
-      room: ctx.room,
-    });
+      log('RealtimeModel created');
 
-    // DIAGNOSTIC: Monkey-patch to trace audio flow
-    const activity = (session as any).activity;
-    if (activity) {
-      const realtimeSession = activity.realtimeSession;
-      if (realtimeSession) {
-        const origPushAudio = realtimeSession.pushAudio.bind(realtimeSession);
-        let pushCount = 0;
-        realtimeSession.pushAudio = (frame: any) => {
-          pushCount++;
-          if (pushCount === 1) {
-            console.log(`[voice-diag] FIRST pushAudio call! sampleRate=${frame.sampleRate}, samples=${frame.samplesPerChannel}`);
-          }
-          if (pushCount % 500 === 0) {
-            console.log(`[voice-diag] pushAudio called ${pushCount} times`);
-          }
-          return origPushAudio(frame);
-        };
-        console.log(`[voice-diag] Monkey-patched pushAudio on RealtimeSession`);
-      } else {
-        console.log(`[voice-diag] No realtimeSession found on activity`);
-      }
+      const agent = new voice.Agent({
+        instructions: KHETSATHI_VOICE_PROMPT + `\n\nThe farmer's preferred language is ${language}. Start the conversation in ${language}, but if they speak in a different language, switch to match them.`,
+        llm: model,
+        allowInterruptions: true,
+      });
 
-      // Also check the audioStream deferred stream
-      const audioStream = activity.audioStream;
-      if (audioStream) {
-        console.log(`[voice-diag] AgentActivity.audioStream.isSourceSet = ${audioStream.isSourceSet}`);
-      }
-    } else {
-      console.log(`[voice-diag] No activity found on session`);
+      log('Agent created');
+
+      const session = new voice.AgentSession({
+        llm: model,
+      });
+
+      session.on('user_input_transcribed' as any, (ev: any) => {
+        if (ev.transcript && ev.isFinal) {
+          log(`Farmer said: ${ev.transcript}`);
+        }
+      });
+
+      session.on('agent_state_changed' as any, (ev: any) => {
+        log(`Agent state: ${ev.oldState} -> ${ev.newState}`);
+      });
+
+      session.on('close' as any, (ev: any) => {
+        log(`Session closed: ${JSON.stringify(ev)}`);
+      });
+
+      session.on('error' as any, (ev: any) => {
+        log(`Session error event: ${JSON.stringify(ev)}`);
+      });
+
+      log('Starting session...');
+      await session.start({
+        agent,
+        room: ctx.room,
+      });
+      log('Session started successfully');
+
+      log('Generating initial greeting...');
+      await session.generateReply({
+        instructions: languageGreeting,
+      });
+      log('Initial greeting generated');
+
+    } catch (error: any) {
+      log(`FATAL ERROR: ${error.message}\n${error.stack}`);
+      throw error;
     }
-
-    await session.generateReply({
-      instructions: languageGreeting,
-    });
   },
 });
 
