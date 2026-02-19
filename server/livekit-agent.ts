@@ -1,7 +1,5 @@
 import { defineAgent, type JobContext, cli, voice, ServerOptions } from '@livekit/agents';
 import * as google from '@livekit/agents-plugin-google';
-import * as silero from '@livekit/agents-plugin-silero';
-import { AudioStream, RoomEvent, TrackSource } from '@livekit/rtc-node';
 import { fileURLToPath } from 'node:url';
 
 const KHETSATHI_VOICE_PROMPT = `MULTILINGUAL INSTRUCTION (CRITICAL - ALWAYS FOLLOW):
@@ -62,52 +60,11 @@ HOW TO TALK:
 - Since this is a voice conversation, speak naturally and clearly. Avoid technical jargon.`;
 
 export default defineAgent({
-  prewarm: async (proc) => {
-    proc.userData.vad = await silero.VAD.load();
-  },
   entry: async (ctx: JobContext) => {
     await ctx.connect();
 
     const participant = await ctx.waitForParticipant();
     console.log(`[voice] Participant joined: ${participant.identity}`);
-
-    // DIAGNOSTIC: Monitor audio frames directly from the participant's track
-    ctx.room.on(RoomEvent.TrackSubscribed, (track, publication, p) => {
-      if (p.identity === participant.identity && publication.source === TrackSource.SOURCE_MICROPHONE) {
-        console.log(`[voice-diag] Mic track subscribed! sid=${publication.sid}, kind=${track.kind}`);
-        const diagStream = new AudioStream(track, { sampleRate: 24000, numChannels: 1 });
-        let frameCount = 0;
-        let totalSamples = 0;
-        let hasNonZero = false;
-        const reader = diagStream[Symbol.asyncIterator]();
-        const readFrames = async () => {
-          try {
-            for await (const frame of diagStream) {
-              frameCount++;
-              totalSamples += frame.samplesPerChannel;
-              if (!hasNonZero) {
-                const data = new Int16Array(frame.data.buffer, frame.data.byteOffset, frame.data.byteLength / 2);
-                for (let i = 0; i < data.length; i++) {
-                  if (Math.abs(data[i]) > 100) {
-                    hasNonZero = true;
-                    break;
-                  }
-                }
-              }
-              if (frameCount % 500 === 0) {
-                console.log(`[voice-diag] ${frameCount} audio frames received, totalSamples=${totalSamples}, hasNonZeroAudio=${hasNonZero}`);
-              }
-              if (frameCount === 1) {
-                console.log(`[voice-diag] FIRST audio frame: sampleRate=${frame.sampleRate}, channels=${frame.channels}, samplesPerChannel=${frame.samplesPerChannel}`);
-              }
-            }
-          } catch (e: any) {
-            console.log(`[voice-diag] Audio stream ended: ${e.message}`);
-          }
-        };
-        readFrames();
-      }
-    });
 
     const metadata = ctx.room.metadata;
     let language = 'English';
@@ -140,23 +97,17 @@ export default defineAgent({
       temperature: 0.7,
       inputAudioTranscription: {},
       outputAudioTranscription: {},
-      realtimeInputConfig: {
-        automaticActivityDetection: {
-          disabled: true,
-        },
-      },
     });
 
     const agent = new voice.Agent({
       instructions: KHETSATHI_VOICE_PROMPT + `\n\nThe farmer's preferred language is ${language}. Start the conversation in ${language}, but if they speak in a different language, switch to match them.`,
       llm: model,
-      vad: ctx.proc.userData.vad! as silero.VAD,
       allowInterruptions: true,
-      turnDetection: 'vad',
+      turnDetection: 'server',
     });
 
     const session = new voice.AgentSession({
-      userAwayTimeout: 120,
+      userAwayTimeout: 300,
     });
 
     session.on('user_input_transcribed' as any, (ev: any) => {
