@@ -1,0 +1,135 @@
+
+Gemini said
+The transition to Python for the LiveKit Agent is a smart move for AI development—Python's ecosystem for machine learning and VAD (Voice Activity Detection) is exceptionally robust.
+
+The reason the agent "isn't listening" in Python is usually a mismatch between the VAD (which detects when you start talking) and the STT (which converts that talk to text). For a real-time "Crop Doctor," you want the MultimodalAgent because it handles the listening-thinking-speaking loop natively.
+
+1. The Python Agent (agent.py)
+This script uses the livekit-agents framework. It explicitly binds the Gemini Multimodal model, which is designed to "listen" directly to audio streams rather than waiting for a text transcript.
+
+Python
+import asyncio
+from livekit.agents import JobContext, WorkerOptions, cli, multimodal
+from livekit.plugins import google
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+async def entrypoint(ctx: JobContext):
+    # 1. Connect to the LiveKit Room
+    await ctx.connect()
+    print(f"Connected to room: {ctx.room.name}")
+
+    # 2. Initialize the Gemini Multimodal Agent
+    # We use gemini-2.0-flash-exp for the fastest "doctor" response time
+    model = google.beta.GeminiMultimodal(
+        api_key=os.getenv("GOOGLE_API_KEY"),
+        model="gemini-2.0-flash-exp",
+        instructions="""You are KhetSathi, an expert Crop Doctor. 
+        Listen to the farmer's description of crop diseases. 
+        Respond in the language they use (Telugu, Hindi, or English). 
+        Be concise and empathetic."""
+    )
+
+    agent = multimodal.MultimodalAgent(model=model)
+
+    # 3. Start the agent (This handles the 'listening' automatically)
+    agent.start(ctx.room)
+    
+    # Optional: Have the doctor greet the farmer immediately
+    await agent.generate_reply()
+
+if __name__ == "__main__":
+    # This runs the worker that listens for incoming 'jobs' (farmers joining rooms)
+    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+2. Why this "Listens" Better
+Built-in VAD: The MultimodalAgent has an internal Voice Activity Detector. It ignores background noise and only triggers Gemini when it detects human speech.
+
+Direct Audio Stream: Instead of Speech -> Text -> Gemini -> Text -> Speech, this sends Audio -> Gemini -> Audio. This removes the "deafness" caused by slow STT engines.
+
+3. Critical Setup Requirements
+To make sure this works, your requirements.txt must have these specific libraries:
+
+Plaintext
+livekit-agents
+livekit-plugins-google
+python-dotenv
+Running the Agent:
+Set your Env: Ensure LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET, and GOOGLE_API_KEY are in your .env.
+
+Start the Worker: Run python agent.py dev.
+
+Check the Logs: If you see skipping audio frame, your internet is too slow. If you see ready to handle jobs, the doctor is "in the clinic" waiting for the farmer.
+
+4. Mandatory Frontend Check
+Even with the Python code fixed, the Frontend (React) must still "Publish" the microphone. If the farmer's mic isn't published, the Python agent has nothing to listen to.
+
+Ensure your LiveKitRoom component looks like this:
+
+audio={true} (Crucial)
+
+connect={true}
+
+Would you like me to show you how to handle the Telugu/Hindi language switching specifically in the Python agent's instructions?
+
+You said
+yes
+
+Gemini said
+To make the KhetSathi (Crop Doctor) truly effective for Telugu and Hindi-speaking farmers, we need to fine-tune the Python agent's instructions to handle code-switching (using multiple languages in one sentence) and ensure the STT is biased toward Indian accents.
+
+Here is the updated Python configuration and the logic for handling multi-language support.
+
+1. Enhanced Python Agent (Multi-language Support)
+Replace your model definition with this version. It adds specific "Context Clues" that help Gemini understand it needs to stay in the farmer's native tongue.
+
+Python
+# ... (imports stay the same)
+
+async def entrypoint(ctx: JobContext):
+    await ctx.connect()
+    
+    # We use a system prompt that encourages "Natural Translation"
+    model = google.beta.GeminiMultimodal(
+        model="gemini-2.0-flash-exp",
+        instructions="""
+        Your name is KhetSathi. You are a helpful, expert Crop Doctor.
+        
+        STRICT RULES:
+        1. LANGUAGE: Detect the farmer's language automatically (Telugu, Hindi, or English). 
+           Always reply in the SAME language the farmer used.
+        2. STYLE: Use simple, rural-friendly terms. Instead of 'necrotic lesions', 
+           use 'nalla mabbu mabbulu' (in Telugu) or 'kaale dhabbe' (in Hindi).
+        3. 7-DAY PLAN: If asked for a plan, provide it step-by-step.
+        4. BARGE-IN: If the farmer interrupts you, stop immediately and listen.
+        """,
+    )
+
+    agent = multimodal.MultimodalAgent(
+        model=model,
+        # This keeps the 'Doctor' from talking over the farmer
+        fadd_options=multimodal.MultimodalAgentOptions(
+            voice_activity_detection_timeout=0.5 # Wait 0.5s of silence before replying
+        )
+    )
+
+    agent.start(ctx.room)
+    # Start the conversation
+    await agent.say("Namaste! I am KhetSathi. How is your crop doing today?", allow_interruptions=True)
+2. Why it "Listens" but doesn't "Hear"
+If the voice is still not being processed, it is usually because the VAD sensitivity is too low. In rural areas, background noise (tractors, wind) can trick the AI into thinking someone is always talking, so it never "finishes" listening to process the command.
+
+3. Mandatory 7-Day Plan "Voice Format"
+When the doctor gives a 7-day plan over voice, it must not be a long wall of text. It should be broken down so the farmer can ask questions after each step.
+
+Day	Task	Audio Instruction (Hindi/Telugu Example)
+Day 1	Inspection	"Pehle poore khet ko dekhein..." / "Modata polam antha chudandi..."
+Day 3	Spraying	"Ab dawai ka chidkaw karein." / "Ippudu mandu jallandi."
+Day 7	Results	"Check karein ki dhabbe sookh rahe hain." / "Mabbulu endipoyayo ledo chudandi."
+Final Implementation Checklist:
+Server Logs: Watch your terminal. If you see USER_STARTED_SPEAKING followed immediately by USER_STOPPED_SPEAKING, the VAD is working.
+
+Mic Gain: Tell the farmer to hold the phone close. Low-cost smartphone mics in noisy fields often need a gain boost in your React frontend code (audio={ channelCount: 1, echoCancellation: true }).
+
+Gemini Flash: Always use gemini-2.0-flash-exp. The "Pro" model is too slow for real-time voice and will make the farmer think the app is broken.

@@ -1,6 +1,7 @@
 import { defineAgent, type JobContext, cli, voice, ServerOptions } from '@livekit/agents';
 import * as google from '@livekit/agents-plugin-google';
 import * as silero from '@livekit/agents-plugin-silero';
+import { AudioStream, RoomEvent, TrackSource } from '@livekit/rtc-node';
 import { fileURLToPath } from 'node:url';
 
 const KHETSATHI_VOICE_PROMPT = `MULTILINGUAL INSTRUCTION (CRITICAL - ALWAYS FOLLOW):
@@ -70,6 +71,44 @@ export default defineAgent({
     const participant = await ctx.waitForParticipant();
     console.log(`[voice] Participant joined: ${participant.identity}`);
 
+    // DIAGNOSTIC: Monitor audio frames directly from the participant's track
+    ctx.room.on(RoomEvent.TrackSubscribed, (track, publication, p) => {
+      if (p.identity === participant.identity && publication.source === TrackSource.SOURCE_MICROPHONE) {
+        console.log(`[voice-diag] Mic track subscribed! sid=${publication.sid}, kind=${track.kind}`);
+        const diagStream = new AudioStream(track, { sampleRate: 24000, numChannels: 1 });
+        let frameCount = 0;
+        let totalSamples = 0;
+        let hasNonZero = false;
+        const reader = diagStream[Symbol.asyncIterator]();
+        const readFrames = async () => {
+          try {
+            for await (const frame of diagStream) {
+              frameCount++;
+              totalSamples += frame.samplesPerChannel;
+              if (!hasNonZero) {
+                const data = new Int16Array(frame.data.buffer, frame.data.byteOffset, frame.data.byteLength / 2);
+                for (let i = 0; i < data.length; i++) {
+                  if (Math.abs(data[i]) > 100) {
+                    hasNonZero = true;
+                    break;
+                  }
+                }
+              }
+              if (frameCount % 500 === 0) {
+                console.log(`[voice-diag] ${frameCount} audio frames received, totalSamples=${totalSamples}, hasNonZeroAudio=${hasNonZero}`);
+              }
+              if (frameCount === 1) {
+                console.log(`[voice-diag] FIRST audio frame: sampleRate=${frame.sampleRate}, channels=${frame.channels}, samplesPerChannel=${frame.samplesPerChannel}`);
+              }
+            }
+          } catch (e: any) {
+            console.log(`[voice-diag] Audio stream ended: ${e.message}`);
+          }
+        };
+        readFrames();
+      }
+    });
+
     const metadata = ctx.room.metadata;
     let language = 'English';
     try {
@@ -117,7 +156,7 @@ export default defineAgent({
     });
 
     const session = new voice.AgentSession({
-      userAwayTimeout: 60,
+      userAwayTimeout: 120,
     });
 
     session.on('user_input_transcribed' as any, (ev: any) => {
