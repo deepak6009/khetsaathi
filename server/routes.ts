@@ -118,12 +118,16 @@ export async function registerRoutes(
   app.post("/api/upload-images", upload.array("images", 3), async (req, res) => {
     try {
       const files = req.files as Express.Multer.File[];
+      const phone = req.body.phone;
       if (!files || files.length === 0) {
         return res.status(400).json({ message: "At least one image is required" });
       }
-      log(`Uploading ${files.length} images to S3...`);
+      if (!phone || phone.length < 10) {
+        return res.status(400).json({ message: "Phone number is required" });
+      }
+      log(`Uploading ${files.length} images to S3 for user ${phone}...`);
       const imageUrls = await Promise.all(
-        files.map((file) => uploadToS3(file.buffer, file.originalname, file.mimetype))
+        files.map((file) => uploadToS3(file.buffer, file.originalname, file.mimetype, phone))
       );
       log(`Images uploaded: ${imageUrls.join(", ")}`);
       return res.json({ success: true, imageUrls });

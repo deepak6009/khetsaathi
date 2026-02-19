@@ -101,6 +101,7 @@ export default function Home() {
     mutationFn: async () => {
       const formData = new FormData();
       selectedFiles.forEach((file) => formData.append("images", file));
+      formData.append("phone", phoneNumber);
       const res = await fetch("/api/upload-images", { method: "POST", body: formData });
       if (!res.ok) throw new Error((await res.json()).message || "Upload failed");
       return res.json() as Promise<{ imageUrls: string[] }>;

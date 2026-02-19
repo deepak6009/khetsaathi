@@ -18,17 +18,18 @@ function getS3Client(): S3Client {
 export async function uploadToS3(
   fileBuffer: Buffer,
   originalName: string,
-  mimetype: string
+  mimetype: string,
+  userId: string
 ): Promise<string> {
-  const bucketName = process.env.S3_BUCKET_NAME;
+  const bucketName = "khetsathi-crop-images";
   const cloudfrontUrl = process.env.CLOUDFRONT_URL;
 
-  if (!bucketName) throw new Error("S3_BUCKET_NAME is not configured");
   if (!cloudfrontUrl) throw new Error("CLOUDFRONT_URL is not configured");
 
   const s3Client = getS3Client();
   const ext = path.extname(originalName) || ".jpg";
-  const fileKey = `crops/${randomUUID()}${ext}`;
+  const sanitizedUserId = userId.replace(/[^a-zA-Z0-9+_-]/g, "");
+  const fileKey = `${sanitizedUserId}/${randomUUID()}${ext}`;
 
   await s3Client.send(
     new PutObjectCommand({
