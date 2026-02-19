@@ -190,14 +190,18 @@ export default function Home() {
     setIsTyping(true);
 
     try {
+      const currentPhase = chatPhaseRef.current;
+      const isDiagnosedFirstReply = currentPhase === "diagnosed";
+
       const chatRes = await fetch("/api/chat/message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: updatedMessages,
           language,
-          diagnosis: chatPhaseRef.current === "diagnosed" || chatPhaseRef.current === "asking_plan" ? diagnosisRef.current : null,
-          planGenerated: chatPhaseRef.current === "plan_ready",
+          diagnosis: (currentPhase === "diagnosed" || currentPhase === "asking_plan") ? diagnosisRef.current : null,
+          planGenerated: currentPhase === "plan_ready",
+          diagnosisAvailable: isDiagnosedFirstReply,
         }),
       });
 
@@ -207,6 +211,10 @@ export default function Home() {
       const assistantMsg: ChatMessage = { role: "assistant", content: chatData.reply };
       const newMessages = [...updatedMessages, assistantMsg];
       setMessages(newMessages);
+
+      if (isDiagnosedFirstReply) {
+        setChatPhase("asking_plan");
+      }
 
       runExtractionAgent(newMessages);
       runPlanIntentAgent(newMessages);
@@ -232,22 +240,6 @@ export default function Home() {
       const data = await res.json();
       setDiagnosis(data.diagnosis);
       setChatPhase("diagnosed");
-
-      const followUpRes = await fetch("/api/chat/message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: currentMessages,
-          language: lang,
-          diagnosis: data.diagnosis,
-          diagnosisAvailable: true,
-        }),
-      });
-      if (followUpRes.ok) {
-        const followUpData = await followUpRes.json();
-        setMessages((prev) => [...prev, { role: "assistant", content: followUpData.reply }]);
-        setChatPhase("asking_plan");
-      }
 
       const conversationSummary = currentMessages
         .map((m) => `${m.role === "user" ? "Farmer" : "AI"}: ${m.content}`)
