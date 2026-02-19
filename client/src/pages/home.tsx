@@ -116,6 +116,63 @@ export default function Home() {
     onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
   });
 
+  const chatPhaseRef = useRef(chatPhase);
+  const extractedCropRef = useRef(extractedCrop);
+  const extractedLocationRef = useRef(extractedLocation);
+  const diagnosisRef = useRef(diagnosis);
+  const diagnosisInProgressRef = useRef(diagnosisInProgress);
+
+  useEffect(() => { chatPhaseRef.current = chatPhase; }, [chatPhase]);
+  useEffect(() => { extractedCropRef.current = extractedCrop; }, [extractedCrop]);
+  useEffect(() => { extractedLocationRef.current = extractedLocation; }, [extractedLocation]);
+  useEffect(() => { diagnosisRef.current = diagnosis; }, [diagnosis]);
+  useEffect(() => { diagnosisInProgressRef.current = diagnosisInProgress; }, [diagnosisInProgress]);
+
+  const runExtractionAgent = useCallback(async (allMessages: ChatMessage[]) => {
+    if (extractedCropRef.current && extractedLocationRef.current) return;
+    if (diagnosisInProgressRef.current) return;
+    if (chatPhaseRef.current !== "gathering") return;
+
+    try {
+      const res = await fetch("/api/chat/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: allMessages }),
+      });
+      if (!res.ok) return;
+      const extracted = await res.json();
+
+      const newCrop = extracted.crop || extractedCropRef.current;
+      const newLocation = extracted.location || extractedLocationRef.current;
+      if (extracted.crop) setExtractedCrop(extracted.crop);
+      if (extracted.location) setExtractedLocation(extracted.location);
+
+      if (newCrop && newLocation && !diagnosisInProgressRef.current && chatPhaseRef.current === "gathering") {
+        setChatPhase("diagnosing");
+        setDiagnosisInProgress(true);
+        triggerDiagnosis(newCrop, newLocation, allMessages);
+      }
+    } catch {}
+  }, []);
+
+  const runPlanIntentAgent = useCallback(async (allMessages: ChatMessage[]) => {
+    if (chatPhaseRef.current !== "asking_plan") return;
+
+    try {
+      const res = await fetch("/api/chat/detect-plan-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: allMessages }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.wantsPlan && chatPhaseRef.current === "asking_plan") {
+        setChatPhase("generating_plan");
+        triggerPlanGeneration(allMessages);
+      }
+    } catch {}
+  }, []);
+
   const sendMessage = useCallback(async () => {
     const text = chatInput.trim();
     if (!text || isTyping) return;
@@ -127,25 +184,16 @@ export default function Home() {
     setIsTyping(true);
 
     try {
-      const [chatRes, extractRes] = await Promise.all([
-        fetch("/api/chat/message", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: updatedMessages,
-            language,
-            diagnosis: chatPhase === "diagnosed" || chatPhase === "asking_plan" ? diagnosis : null,
-            planGenerated: chatPhase === "plan_ready",
-          }),
+      const chatRes = await fetch("/api/chat/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: updatedMessages,
+          language,
+          diagnosis: chatPhaseRef.current === "diagnosed" || chatPhaseRef.current === "asking_plan" ? diagnosisRef.current : null,
+          planGenerated: chatPhaseRef.current === "plan_ready",
         }),
-        (chatPhase === "gathering" && (!extractedCrop || !extractedLocation))
-          ? fetch("/api/chat/extract", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ messages: updatedMessages }),
-            })
-          : Promise.resolve(null),
-      ]);
+      });
 
       const chatData = await chatRes.json();
       if (!chatRes.ok) throw new Error(chatData.message);
@@ -154,40 +202,14 @@ export default function Home() {
       const newMessages = [...updatedMessages, assistantMsg];
       setMessages(newMessages);
 
-      if (extractRes && extractRes.ok) {
-        const extracted = await extractRes.json();
-        const newCrop = extracted.crop || extractedCrop;
-        const newLocation = extracted.location || extractedLocation;
-        if (extracted.crop) setExtractedCrop(extracted.crop);
-        if (extracted.location) setExtractedLocation(extracted.location);
-
-        if (newCrop && newLocation && !diagnosisInProgress && chatPhase === "gathering") {
-          setChatPhase("diagnosing");
-          setDiagnosisInProgress(true);
-          triggerDiagnosis(newCrop, newLocation, newMessages);
-        }
-      }
-
-      if (chatPhase === "asking_plan") {
-        const intentRes = await fetch("/api/chat/detect-plan-intent", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: newMessages }),
-        });
-        if (intentRes.ok) {
-          const intentData = await intentRes.json();
-          if (intentData.wantsPlan) {
-            setChatPhase("generating_plan");
-            triggerPlanGeneration(newMessages);
-          }
-        }
-      }
+      runExtractionAgent(newMessages);
+      runPlanIntentAgent(newMessages);
     } catch (err: any) {
       toast({ title: err.message || "Chat failed", variant: "destructive" });
     } finally {
       setIsTyping(false);
     }
-  }, [chatInput, messages, isTyping, phoneNumber, language, imageUrls, chatPhase, diagnosis, extractedCrop, extractedLocation, diagnosisInProgress, toast]);
+  }, [chatInput, messages, isTyping, language, toast, runExtractionAgent, runPlanIntentAgent]);
 
   const triggerDiagnosis = async (crop: string, location: string, currentMessages: ChatMessage[]) => {
     try {
@@ -241,10 +263,11 @@ export default function Home() {
   const triggerPlanGeneration = async (currentMessages: ChatMessage[]) => {
     try {
       setIsTyping(true);
+      const currentDiagnosis = diagnosisRef.current;
       const res = await fetch("/api/chat/generate-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: currentMessages, diagnosis, language, imageUrls }),
+        body: JSON.stringify({ messages: currentMessages, diagnosis: currentDiagnosis, language, imageUrls }),
       });
       if (!res.ok) throw new Error("Plan generation failed");
       const data = await res.json();
@@ -263,7 +286,7 @@ export default function Home() {
         body: JSON.stringify({
           phone: phoneNumber,
           conversationSummary,
-          diagnosis,
+          diagnosis: currentDiagnosis,
           treatmentPlan: data.plan,
           language,
           imageUrls,
