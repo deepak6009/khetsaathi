@@ -27,7 +27,15 @@ function sendJson(ws: WebSocket, data: Record<string, any>) {
 }
 
 export function setupVoiceWebSocket(server: Server) {
-  const wss = new WebSocketServer({ server, path: "/ws/voice" });
+  const wss = new WebSocketServer({ noServer: true });
+
+  server.on("upgrade", (request, socket, head) => {
+    if (request.url === "/ws/voice") {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit("connection", ws, request);
+      });
+    }
+  });
 
   wss.on("connection", (ws) => {
     log("Voice WebSocket connected", "voice");

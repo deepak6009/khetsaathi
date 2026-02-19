@@ -210,7 +210,7 @@ export default function Home() {
 
   const fetchRecentHistory = useCallback(async (phone: string) => {
     if (!phone) return;
-    setHistoryLoading(true);
+    if (recentHistory.length === 0) setHistoryLoading(true);
     try {
       const res = await fetch(`/api/history/${encodeURIComponent(phone)}`);
       const data = await res.json();
@@ -220,7 +220,7 @@ export default function Home() {
     } catch {} finally {
       setHistoryLoading(false);
     }
-  }, []);
+  }, [recentHistory.length]);
 
   useEffect(() => {
     if (!userLocation && navigator.geolocation) {
@@ -911,7 +911,7 @@ export default function Home() {
         />
 
         <main className="flex-1 max-w-lg mx-auto w-full px-4 py-5 space-y-5">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
             {profileImageUrl ? (
               <img src={profileImageUrl} alt="Profile" className="w-11 h-11 rounded-full object-cover border-2 border-white shadow-sm" data-testid="img-profile-avatar" />
             ) : (
@@ -929,9 +929,9 @@ export default function Home() {
                 <span className="text-[11px] text-gray-500 font-medium max-w-[100px] truncate">{userLocation}</span>
               </div>
             )}
-          </motion.div>
+          </div>
 
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+          <div>
             <button
               onClick={goToCapture}
               className="w-full rounded-2xl overflow-hidden shadow-lg active:scale-[0.98] transition-all duration-200"
@@ -949,9 +949,9 @@ export default function Home() {
                 <ChevronRight className="w-5 h-5 text-white/30 flex-shrink-0" />
               </div>
             </button>
-          </motion.div>
+          </div>
 
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.08 }}>
+          <div>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={goToCapture}
@@ -975,9 +975,9 @@ export default function Home() {
                 </button>
               </Link>
             </div>
-          </motion.div>
+          </div>
 
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.16 }}>
+          <div>
             <div className="flex items-center justify-between gap-2 mb-3">
               <h3 className={`text-[13px] font-semibold text-gray-400 uppercase tracking-wider ${langSpaceTight(language)}`}>{getLabel("recentDiagnoses")}</h3>
               {recentHistory.length > 0 && (
@@ -1033,7 +1033,7 @@ export default function Home() {
                 ))}
               </div>
             )}
-          </motion.div>
+          </div>
         </main>
 
         <footer className="mt-auto">
