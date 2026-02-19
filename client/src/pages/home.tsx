@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, X, Camera, Phone as PhoneIcon, Globe, ArrowRight, ArrowLeft, Check, Send, Bot, Languages, FileText, Download, Mic, MapPin, History, Monitor, RotateCcw } from "lucide-react";
+import { Upload, X, Camera, Phone as PhoneIcon, Globe, ArrowRight, ArrowLeft, Check, Send, Bot, Languages, FileText, Download, Mic, MapPin, History, Monitor, RotateCcw, ChevronLeft, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import VoiceChat from "@/components/voice-chat";
@@ -14,6 +14,7 @@ import logoImage from "@assets/Blue_and_Green_Farmers_Instagram_Post_(2)_1771525
 
 type Step = "language" | "phone" | "upload" | "chat";
 const stepOrder: Step[] = ["language", "phone", "upload", "chat"];
+const wizardSteps: Step[] = ["language", "phone", "upload"];
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -27,14 +28,14 @@ const labels = {
   subtitle: { English: "AI Crop Doctor", Telugu: "AI పంట వైద్యుడు", Hindi: "AI फसल डॉक्टर" } as Record<Language, string>,
   tagline: { English: "Your smart farming companion", Telugu: "మీ తెలివైన వ్యవసాయ సహచరుడు", Hindi: "आपका स्मार्ट खेती साथी" } as Record<Language, string>,
   enterPhone: { English: "Enter your phone number", Telugu: "మీ ఫోన్ నంబర్ ఎంటర్ చేయండి", Hindi: "अपना फोन नंबर डालें" } as Record<Language, string>,
-  phoneHint: { English: "We'll use this to save your crop history", Telugu: "మీ పంట చరిత్రను సేవ్ చేయడానికి ఇది ఉపయోగించబడుతుంది", Hindi: "इसका उपयोग आपकी फसल का इतिहास सहेजने के लिए किया जाएगा" } as Record<Language, string>,
+  phoneHint: { English: "We'll save your crop diagnosis history", Telugu: "మీ పంట చరిత్రను సేవ్ చేస్తాము", Hindi: "हम आपकी फसल का इतिहास सहेजेंगे" } as Record<Language, string>,
   phoneLabel: { English: "Phone Number", Telugu: "ఫోన్ నంబర్", Hindi: "फोन नंबर" } as Record<Language, string>,
   continueBtn: { English: "Continue", Telugu: "కొనసాగించు", Hindi: "आगे बढ़ें" } as Record<Language, string>,
   registering: { English: "Please wait...", Telugu: "దయచేసి వేచి ఉండండి...", Hindi: "कृपया प्रतीक्षा करें..." } as Record<Language, string>,
   chooseLanguage: { English: "Choose your language", Telugu: "మీ భాషను ఎంచుకోండి", Hindi: "अपनी भाषा चुनें" } as Record<Language, string>,
   languageHint: { English: "The entire app will be in your language", Telugu: "యాప్ మొత్తం మీ భాషలో ఉంటుంది", Hindi: "पूरा ऐप आपकी भाषा में होगा" } as Record<Language, string>,
   uploadPhotos: { English: "Upload Crop Photos", Telugu: "పంట ఫోటోలు అప్‌లోడ్ చేయండి", Hindi: "फसल की फोटो अपलोड करें" } as Record<Language, string>,
-  uploadHint: { English: "Take 1-6 clear photos of the affected crop", Telugu: "ప్రభావిత పంట యొక్క 1-6 స్పష్టమైన ఫోటోలు తీయండి", Hindi: "प्रभावित फसल की 1-6 साफ फोटो लें" } as Record<Language, string>,
+  uploadHint: { English: "Take 1-6 clear photos of affected leaves or crop", Telugu: "ప్రభావిత ఆకులు లేదా పంట యొక్క 1-6 ఫోటోలు తీయండి", Hindi: "प्रभावित पत्तियों या फसल की 1-6 फोटो लें" } as Record<Language, string>,
   addMore: { English: "Add More", Telugu: "మరిన్ని", Hindi: "और जोड़ें" } as Record<Language, string>,
   next: { English: "Analyze Crop", Telugu: "పంటను విశ్లేషించు", Hindi: "फसल का विश्लेषण करें" } as Record<Language, string>,
   uploading: { English: "Uploading...", Telugu: "అప్‌లోడ్ అవుతోంది...", Hindi: "अपलोड हो रहा है..." } as Record<Language, string>,
@@ -47,14 +48,16 @@ const labels = {
   footer: { English: "Built for Farmers", Telugu: "రైతుల కోసం", Hindi: "किसानों के लिए" } as Record<Language, string>,
   detectingLocation: { English: "Detecting your location...", Telugu: "మీ స్థానాన్ని గుర్తిస్తోంది...", Hindi: "आपका स्थान पता लगा रहा है..." } as Record<Language, string>,
   locationDetected: { English: "Location detected", Telugu: "స్థానం గుర్తించబడింది", Hindi: "स्थान पता चला" } as Record<Language, string>,
-  history: { English: "My History", Telugu: "నా చరిత్ర", Hindi: "मेरा इतिहास" } as Record<Language, string>,
+  history: { English: "History", Telugu: "చరిత్ర", Hindi: "इतिहास" } as Record<Language, string>,
   back: { English: "Back", Telugu: "వెనక్కి", Hindi: "वापस" } as Record<Language, string>,
-  newDiagnosis: { English: "New Diagnosis", Telugu: "కొత్త రోగ నిర్ధారణ", Hindi: "नया निदान" } as Record<Language, string>,
+  newDiagnosis: { English: "New", Telugu: "కొత్త", Hindi: "नया" } as Record<Language, string>,
   kioskTitle: { English: "Kiosk Mode", Telugu: "కియోస్క్ మోడ్", Hindi: "कियोस्क मोड" } as Record<Language, string>,
   kioskDesc: { English: "Village kiosk support for farmers without smartphones", Telugu: "స్మార్ట్‌ఫోన్ లేని రైతుల కోసం గ్రామ కియోస్క్ సపోర్ట్", Hindi: "बिना स्मार्टफोन वाले किसानों के लिए गांव कियोस्क सपोर्ट" } as Record<Language, string>,
   comingSoon: { English: "Coming Soon", Telugu: "త్వరలో వస్తోంది", Hindi: "जल्द आ रहा है" } as Record<Language, string>,
-  startDiagnosis: { English: "Start Diagnosis", Telugu: "రోగ నిర్ధారణ ప్రారంభించండి", Hindi: "निदान शुरू करें" } as Record<Language, string>,
-  orUseKiosk: { English: "Or visit your nearest village kiosk", Telugu: "లేదా మీ సమీపంలోని గ్రామ కియోస్క్‌ను సందర్శించండి", Hindi: "या अपने नजदीकी गांव के कियोस्क पर जाएं" } as Record<Language, string>,
+  stepLanguage: { English: "Language", Telugu: "భాష", Hindi: "भाषा" } as Record<Language, string>,
+  stepPhone: { English: "Phone", Telugu: "ఫోన్", Hindi: "फोन" } as Record<Language, string>,
+  stepUpload: { English: "Photos", Telugu: "ఫోటోలు", Hindi: "फोटो" } as Record<Language, string>,
+  tapToUpload: { English: "Tap to add photos", Telugu: "ఫోటోలు జోడించడానికి నొక్కండి", Hindi: "फोटो जोड़ने के लिए टैप करें" } as Record<Language, string>,
 };
 
 export default function Home() {
@@ -104,9 +107,7 @@ export default function Home() {
             const state = data.address?.state || "";
             const loc = [district, state].filter(Boolean).join(", ");
             if (loc) setUserLocation(loc);
-          } catch {
-            // silently fail
-          }
+          } catch {}
         },
         () => {},
         { timeout: 10000, enableHighAccuracy: false }
@@ -192,7 +193,6 @@ export default function Home() {
     if (extractedCropRef.current && extractedLocationRef.current) return;
     if (diagnosisInProgressRef.current) return;
     if (chatPhaseRef.current !== "gathering") return;
-
     try {
       const res = await fetch("/api/chat/extract", {
         method: "POST",
@@ -201,12 +201,10 @@ export default function Home() {
       });
       if (!res.ok) return;
       const extracted = await res.json();
-
       const newCrop = extracted.crop || extractedCropRef.current;
       const newLocation = extracted.location || extractedLocationRef.current;
       if (extracted.crop) setExtractedCrop(extracted.crop);
       if (extracted.location) setExtractedLocation(extracted.location);
-
       if (newCrop && newLocation && !diagnosisInProgressRef.current && chatPhaseRef.current === "gathering") {
         setChatPhase("diagnosing");
         setDiagnosisInProgress(true);
@@ -218,7 +216,6 @@ export default function Home() {
   const runPlanIntentAgent = useCallback(async (allMessages: ChatMessage[]) => {
     const phase = chatPhaseRef.current;
     if (phase !== "diagnosed" && phase !== "asking_plan") return;
-
     try {
       const res = await fetch("/api/chat/detect-plan-intent", {
         method: "POST",
@@ -237,18 +234,15 @@ export default function Home() {
   const sendMessage = useCallback(async () => {
     const text = chatInput.trim();
     if (!text || isTyping) return;
-
     const userMsg: ChatMessage = { role: "user", content: text };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setChatInput("");
     setIsTyping(true);
-
     try {
       const currentPhase = chatPhaseRef.current;
       const hasDiagnosis = currentPhase === "diagnosed" || currentPhase === "asking_plan" || currentPhase === "awaiting_plan_language";
       const isDiagnosedReply = currentPhase === "diagnosed" || currentPhase === "awaiting_plan_language";
-
       const chatRes = await fetch("/api/chat/message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -261,14 +255,11 @@ export default function Home() {
           location: userLocation,
         }),
       });
-
       const chatData = await chatRes.json();
       if (!chatRes.ok) throw new Error(chatData.message);
-
       const assistantMsg: ChatMessage = { role: "assistant", content: chatData.reply };
       const newMessages = [...updatedMessages, assistantMsg];
       setMessages(newMessages);
-
       runExtractionAgent(newMessages);
       runPlanIntentAgent(newMessages);
     } catch (err: any) {
@@ -283,7 +274,6 @@ export default function Home() {
       const urls = imageUrlsRef.current;
       const lang = languageRef.current;
       const phone = phoneRef.current;
-
       const res = await fetch("/api/chat/diagnose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -293,20 +283,13 @@ export default function Home() {
       const data = await res.json();
       setDiagnosis(data.diagnosis);
       setChatPhase("diagnosed");
-
       const conversationSummary = currentMessages
         .map((m) => `${m.role === "user" ? "Farmer" : "AI"}: ${m.content}`)
         .join("\n");
       await fetch("/api/save-usercase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone,
-          conversationSummary,
-          diagnosis: data.diagnosis,
-          language: lang,
-          imageUrls: urls,
-        }),
+        body: JSON.stringify({ phone, conversationSummary, diagnosis: data.diagnosis, language: lang, imageUrls: urls }),
       });
     } catch (err: any) {
       toast({ title: "Could not diagnose disease", variant: "destructive" });
@@ -321,7 +304,6 @@ export default function Home() {
       const currentDiagnosis = diagnosisRef.current;
       const urls = imageUrlsRef.current;
       const phone = phoneRef.current;
-
       const res = await fetch("/api/chat/generate-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -333,7 +315,6 @@ export default function Home() {
       setPlanLanguage(selectedLang);
       setPdfUrl(data.pdfUrl || null);
       setChatPhase("plan_ready");
-
       setMessages((prev) => [...prev, { role: "assistant", content: labels.planReady[selectedLang] || labels.planReady.English }]);
     } catch (err: any) {
       toast({ title: "Plan generation failed", variant: "destructive" });
@@ -353,58 +334,73 @@ export default function Home() {
     triggerPlanGeneration(messages, selectedLang);
   };
 
+  const resetForNewDiagnosis = () => {
+    setCurrentStep("upload");
+    setSelectedFiles([]);
+    setPreviews([]);
+    setImageUrls([]);
+    setMessages([]);
+    setChatInput("");
+    setChatPhase("gathering");
+    setExtractedCrop(null);
+    setExtractedLocation(null);
+    setDiagnosis(null);
+    setTreatmentPlan(null);
+    setPlanLanguage(null);
+    setPdfUrl(null);
+    setDiagnosisInProgress(false);
+    setIsVoiceActive(false);
+  };
+
+  const goBack = () => {
+    const idx = stepOrder.indexOf(currentStep);
+    if (idx > 0) setCurrentStep(stepOrder[idx - 1]);
+  };
+
   const getLabel = (key: keyof typeof labels) => labels[key][language] || labels[key].English;
 
-  const stepLabels: Record<Step, string> = { language: "1", phone: "2", upload: "3", chat: "4" };
+  const stepNames: Record<string, keyof typeof labels> = { language: "stepLanguage", phone: "stepPhone", upload: "stepUpload" };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="bg-primary text-primary-foreground">
-        <div className="max-w-lg mx-auto px-4 py-3">
+      <header className="bg-primary text-primary-foreground sticky top-0 z-50">
+        <div className="max-w-lg mx-auto px-3 py-2.5 sm:px-4">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
+              {currentStep !== "language" && currentStep !== "chat" && (
+                <button
+                  onClick={goBack}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-primary-foreground/80 active:bg-white/10 flex-shrink-0"
+                  data-testid="button-back-header"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+              )}
               <img
                 src={logoImage}
                 alt="KhetSathi Logo"
-                className="w-10 h-10 rounded-md object-contain bg-white/10 p-0.5"
+                className="w-9 h-9 rounded-md object-contain bg-white/10 p-0.5"
                 data-testid="img-logo"
               />
-              <div>
-                <h1 className="text-lg font-bold tracking-tight leading-tight" data-testid="text-app-title">
+              <div className="min-w-0">
+                <h1 className="text-base font-bold tracking-tight leading-tight truncate" data-testid="text-app-title">
                   {getLabel("title")}
                 </h1>
-                <p className="text-[11px] text-primary-foreground/75 leading-tight" data-testid="text-app-subtitle">
+                <p className="text-[10px] text-primary-foreground/70 leading-tight" data-testid="text-app-subtitle">
                   {getLabel("subtitle")}
                 </p>
               </div>
             </div>
             {currentStep === "chat" && phoneNumber && (
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="sm" className="text-primary-foreground/80 gap-1.5" data-testid="button-new-diagnosis"
-                  onClick={() => {
-                    setCurrentStep("upload");
-                    setSelectedFiles([]);
-                    setPreviews([]);
-                    setImageUrls([]);
-                    setMessages([]);
-                    setChatInput("");
-                    setChatPhase("gathering");
-                    setExtractedCrop(null);
-                    setExtractedLocation(null);
-                    setDiagnosis(null);
-                    setTreatmentPlan(null);
-                    setPlanLanguage(null);
-                    setPdfUrl(null);
-                    setDiagnosisInProgress(false);
-                    setIsVoiceActive(false);
-                  }}>
-                  <RotateCcw className="w-4 h-4" />
-                  <span className="hidden sm:inline">{getLabel("newDiagnosis")}</span>
+              <div className="flex items-center gap-0.5">
+                <Button variant="ghost" size="sm" className="text-primary-foreground/80 gap-1 text-xs px-2" data-testid="button-new-diagnosis" onClick={resetForNewDiagnosis}>
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  {getLabel("newDiagnosis")}
                 </Button>
                 <Link href={`/history?phone=${encodeURIComponent(phoneNumber)}&lang=${language}`}>
-                  <Button variant="ghost" size="sm" className="text-primary-foreground/80 gap-1.5" data-testid="button-history">
-                    <History className="w-4 h-4" />
-                    <span className="hidden sm:inline">{getLabel("history")}</span>
+                  <Button variant="ghost" size="sm" className="text-primary-foreground/80 gap-1 text-xs px-2" data-testid="button-history">
+                    <History className="w-3.5 h-3.5" />
+                    {getLabel("history")}
                   </Button>
                 </Link>
               </div>
@@ -414,28 +410,41 @@ export default function Home() {
       </header>
 
       {currentStep !== "chat" && (
-        <div className="bg-card border-b border-border">
-          <div className="max-w-lg mx-auto px-4 py-2.5">
-            <div className="flex items-center justify-between gap-1">
-              {stepOrder.filter(s => s !== "chat").map((step, idx) => {
+        <div className="bg-card border-b border-border sticky top-[52px] z-40">
+          <div className="max-w-lg mx-auto px-3 py-2 sm:px-4">
+            <div className="flex items-center gap-0">
+              {wizardSteps.map((step, idx) => {
                 const realIdx = stepOrder.indexOf(step);
                 const isActive = realIdx === stepIndex;
                 const isDone = realIdx < stepIndex;
                 return (
-                  <div key={step} className="flex items-center flex-1 gap-1">
+                  <div key={step} className="flex items-center flex-1">
                     <button
                       type="button"
                       disabled={!isDone}
                       onClick={() => isDone && setCurrentStep(step)}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-colors ${
-                        isDone ? "bg-primary text-primary-foreground cursor-pointer" : isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                      }`}
+                      className="flex items-center gap-1.5 flex-shrink-0"
                       data-testid={`step-indicator-${step}`}
                     >
-                      {isDone ? <Check className="w-4 h-4" /> : stepLabels[step]}
+                      <div
+                        className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 transition-all ${
+                          isDone
+                            ? "bg-primary text-primary-foreground cursor-pointer"
+                            : isActive
+                            ? "bg-primary text-primary-foreground ring-2 ring-primary/30 ring-offset-1 ring-offset-card"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {isDone ? <Check className="w-3.5 h-3.5" /> : idx + 1}
+                      </div>
+                      <span className={`text-xs font-medium hidden min-[380px]:inline ${
+                        isActive || isDone ? "text-foreground" : "text-muted-foreground"
+                      }`}>
+                        {getLabel(stepNames[step])}
+                      </span>
                     </button>
-                    {idx < 2 && (
-                      <div className={`flex-1 h-0.5 rounded-full transition-colors ${stepOrder.indexOf(step) < stepIndex ? "bg-primary" : "bg-muted"}`} />
+                    {idx < wizardSteps.length - 1 && (
+                      <div className={`flex-1 h-[2px] mx-2 rounded-full transition-colors ${realIdx < stepIndex ? "bg-primary" : "bg-muted"}`} />
                     )}
                   </div>
                 );
@@ -445,53 +454,54 @@ export default function Home() {
         </div>
       )}
 
-      <main className={`flex-1 max-w-lg mx-auto w-full ${currentStep === "chat" ? "flex flex-col" : "px-4 py-6"}`}>
+      <main className={`flex-1 w-full ${currentStep === "chat" ? "flex flex-col" : ""}`}>
         <AnimatePresence mode="wait">
           {currentStep === "language" && (
-            <motion.div key="language" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.3 }}>
-              <div className="space-y-5">
-                <Card className="p-5 sm:p-6">
-                  <div className="text-center mb-6">
-                    <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                      <Globe className="w-10 h-10 text-primary" />
-                    </div>
-                    <h2 className="text-xl font-semibold mb-1" data-testid="text-language-title">{getLabel("chooseLanguage")}</h2>
-                    <p className="text-sm text-muted-foreground">{getLabel("languageHint")}</p>
-                  </div>
-                  <div className="space-y-3">
-                    {(["English", "Telugu", "Hindi"] as Language[]).map((lang) => (
-                      <button key={lang} onClick={() => setLanguage(lang)}
-                        className={`w-full p-4 rounded-md border-2 text-left flex items-center gap-4 transition-colors ${
-                          language === lang ? "border-primary bg-primary/5" : "border-border hover-elevate"
-                        }`} data-testid={`button-lang-${lang.toLowerCase()}`}>
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                          language === lang ? "border-primary bg-primary" : "border-muted-foreground"
-                        }`}>
-                          {language === lang && <Check className="w-3.5 h-3.5 text-primary-foreground" />}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-foreground text-base">{lang === "Telugu" ? "తెలుగు" : lang === "Hindi" ? "हिन्दी" : "English"}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{lang}</p>
-                        </div>
-                      </button>
-                    ))}
-                    <Button className="w-full gap-2 mt-3" size="lg" onClick={() => setCurrentStep("phone")} data-testid="button-continue-language">
-                      {getLabel("continueBtn")}<ArrowRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </Card>
+            <motion.div key="language" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="max-w-lg mx-auto w-full px-3 py-4 sm:px-4 sm:py-6">
+              <div className="space-y-4">
+                <div className="text-center mb-2">
+                  <h2 className="text-lg font-semibold" data-testid="text-language-title">{getLabel("chooseLanguage")}</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">{getLabel("languageHint")}</p>
+                </div>
 
-                <Card className="p-4 sm:p-5 relative overflow-visible" data-testid="card-kiosk-coming-soon">
-                  <Badge variant="secondary" className="absolute -top-2.5 right-4" data-testid="badge-coming-soon">
+                <div className="space-y-2.5">
+                  {(["English", "Telugu", "Hindi"] as Language[]).map((lang) => (
+                    <button
+                      key={lang}
+                      onClick={() => setLanguage(lang)}
+                      className={`w-full px-4 py-3.5 rounded-md border-2 text-left flex items-center gap-3 transition-colors active:scale-[0.98] ${
+                        language === lang ? "border-primary bg-primary/5" : "border-border"
+                      }`}
+                      data-testid={`button-lang-${lang.toLowerCase()}`}
+                    >
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                        language === lang ? "border-primary bg-primary" : "border-muted-foreground/50"
+                      }`}>
+                        {language === lang && <Check className="w-3 h-3 text-primary-foreground" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground text-[15px] leading-tight">{lang === "Telugu" ? "తెలుగు" : lang === "Hindi" ? "हिन्दी" : "English"}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{lang}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <Button className="w-full gap-2" size="lg" onClick={() => setCurrentStep("phone")} data-testid="button-continue-language">
+                  {getLabel("continueBtn")}<ArrowRight className="w-4 h-4" />
+                </Button>
+
+                <Card className="p-3.5 relative overflow-visible" data-testid="card-kiosk-coming-soon">
+                  <Badge variant="secondary" className="absolute -top-2 right-3 text-[10px]" data-testid="badge-coming-soon">
                     {getLabel("comingSoon")}
                   </Badge>
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                      <Monitor className="w-6 h-6 text-muted-foreground" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                      <Monitor className="w-5 h-5 text-muted-foreground" />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground mb-1" data-testid="text-kiosk-title">{getLabel("kioskTitle")}</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{getLabel("kioskDesc")}</p>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-foreground text-sm" data-testid="text-kiosk-title">{getLabel("kioskTitle")}</h3>
+                      <p className="text-xs text-muted-foreground leading-snug">{getLabel("kioskDesc")}</p>
                     </div>
                   </div>
                 </Card>
@@ -500,33 +510,37 @@ export default function Home() {
           )}
 
           {currentStep === "phone" && (
-            <motion.div key="phone" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }}>
-              <Button variant="ghost" size="sm" className="gap-1.5 mb-3" onClick={() => setCurrentStep("language")} data-testid="button-back-phone">
-                <ArrowLeft className="w-4 h-4" />
-                {getLabel("back")}
-              </Button>
-              <Card className="p-5 sm:p-6">
-                <div className="text-center mb-6">
-                  <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <PhoneIcon className="w-10 h-10 text-primary" />
+            <motion.div key="phone" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="max-w-lg mx-auto w-full px-3 py-4 sm:px-4 sm:py-6">
+              <div className="space-y-4">
+                <div className="text-center">
+                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                    <PhoneIcon className="w-7 h-7 text-primary" />
                   </div>
-                  <h2 className="text-xl font-semibold mb-1" data-testid="text-phone-title">{getLabel("enterPhone")}</h2>
-                  <p className="text-sm text-muted-foreground">{getLabel("phoneHint")}</p>
+                  <h2 className="text-lg font-semibold" data-testid="text-phone-title">{getLabel("enterPhone")}</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">{getLabel("phoneHint")}</p>
                 </div>
+
                 {userLocation && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted rounded-md px-3 py-2 mb-4" data-testid="text-location-detected">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted rounded-md px-3 py-2" data-testid="text-location-detected">
                     <MapPin className="w-3.5 h-3.5 text-primary flex-shrink-0" />
                     <span>{getLabel("locationDetected")}: <strong className="text-foreground">{userLocation}</strong></span>
                   </div>
                 )}
-                <div className="space-y-4">
+
+                <div className="space-y-3">
                   <div>
                     <label htmlFor="phone" className="text-sm font-medium mb-1.5 block text-foreground">{getLabel("phoneLabel")}</label>
-                    <Input id="phone" type="tel" placeholder="+91 98765 43210" value={phoneNumber}
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+91 98765 43210"
+                      value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9+]/g, ""))}
-                      className="text-lg text-center tracking-wider" data-testid="input-phone" />
+                      className="text-lg text-center tracking-wider h-12"
+                      data-testid="input-phone"
+                    />
                   </div>
-                  <Button className="w-full gap-2" size="lg" onClick={() => registerPhoneMutation.mutate()}
+                  <Button className="w-full gap-2 h-12" size="lg" onClick={() => registerPhoneMutation.mutate()}
                     disabled={phoneNumber.length < 10 || registerPhoneMutation.isPending} data-testid="button-continue-phone">
                     {registerPhoneMutation.isPending ? (
                       <><span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />{getLabel("registering")}</>
@@ -535,47 +549,57 @@ export default function Home() {
                     )}
                   </Button>
                 </div>
-              </Card>
+              </div>
             </motion.div>
           )}
 
           {currentStep === "upload" && (
-            <motion.div key="upload" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }}>
-              <Button variant="ghost" size="sm" className="gap-1.5 mb-3" onClick={() => setCurrentStep("phone")} data-testid="button-back-upload">
-                <ArrowLeft className="w-4 h-4" />
-                {getLabel("back")}
-              </Button>
-              <Card className="p-5 sm:p-6">
-                <div className="text-center mb-5">
-                  <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                    <Camera className="w-10 h-10 text-primary" />
-                  </div>
-                  <h2 className="text-xl font-semibold mb-1" data-testid="text-upload-title">{getLabel("uploadPhotos")}</h2>
-                  <p className="text-sm text-muted-foreground">{getLabel("uploadHint")}</p>
+            <motion.div key="upload" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="max-w-lg mx-auto w-full px-3 py-4 sm:px-4 sm:py-6">
+              <div className="space-y-4">
+                <div className="text-center">
+                  <h2 className="text-lg font-semibold" data-testid="text-upload-title">{getLabel("uploadPhotos")}</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">{getLabel("uploadHint")}</p>
                 </div>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-3">
-                    {previews.map((preview, idx) => (
-                      <div key={idx} className="relative aspect-square rounded-md overflow-hidden border border-border">
-                        <img src={preview} alt={`Crop ${idx + 1}`} className="w-full h-full object-cover" data-testid={`img-preview-${idx}`} />
-                        <button onClick={() => removeImage(idx)}
-                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
-                          data-testid={`button-remove-image-${idx}`}>
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+
+                <div className="space-y-3">
+                  {previews.length === 0 ? (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full py-10 rounded-md border-2 border-dashed border-primary/40 flex flex-col items-center justify-center gap-2 text-primary active:scale-[0.98] active:bg-primary/5 transition-transform"
+                      data-testid="button-upload-image"
+                    >
+                      <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Camera className="w-7 h-7" />
                       </div>
-                    ))}
-                    {selectedFiles.length < 6 && (
-                      <button onClick={() => fileInputRef.current?.click()}
-                        className="aspect-square rounded-md border-2 border-dashed border-primary/40 flex flex-col items-center justify-center gap-1.5 text-primary hover-elevate cursor-pointer"
-                        data-testid="button-upload-image">
-                        <Upload className="w-7 h-7" />
-                        <span className="text-xs font-medium">{selectedFiles.length > 0 ? getLabel("addMore") : "Upload"}</span>
-                      </button>
-                    )}
-                  </div>
+                      <span className="text-sm font-medium">{getLabel("tapToUpload")}</span>
+                      <span className="text-[11px] text-muted-foreground">1-6 {getLabel("stepUpload").toLowerCase()}</span>
+                    </button>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {previews.map((preview, idx) => (
+                        <div key={idx} className="relative aspect-square rounded-md overflow-hidden border border-border">
+                          <img src={preview} alt={`Crop ${idx + 1}`} className="w-full h-full object-cover" data-testid={`img-preview-${idx}`} />
+                          <button onClick={() => removeImage(idx)}
+                            className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center active:bg-black/80"
+                            data-testid={`button-remove-image-${idx}`}>
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                      {selectedFiles.length < 6 && (
+                        <button onClick={() => fileInputRef.current?.click()}
+                          className="aspect-square rounded-md border-2 border-dashed border-primary/40 flex flex-col items-center justify-center gap-1 text-primary active:bg-primary/5"
+                          data-testid="button-add-more-images">
+                          <Plus className="w-6 h-6" />
+                          <span className="text-[10px] font-medium">{getLabel("addMore")}</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   <input ref={fileInputRef} type="file" accept="image/*" multiple capture="environment" onChange={handleFileSelect} className="hidden" data-testid="input-file-upload" />
-                  <Button className="w-full gap-2" size="lg" onClick={() => uploadMutation.mutate()}
+
+                  <Button className="w-full gap-2 h-12" size="lg" onClick={() => uploadMutation.mutate()}
                     disabled={selectedFiles.length === 0 || uploadMutation.isPending} data-testid="button-next-upload">
                     {uploadMutation.isPending ? (
                       <><span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />{getLabel("uploading")}</>
@@ -584,22 +608,22 @@ export default function Home() {
                     )}
                   </Button>
                 </div>
-              </Card>
+              </div>
             </motion.div>
           )}
 
           {currentStep === "chat" && (
             <motion.div key="chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col flex-1 h-full">
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3" data-testid="chat-messages">
+              <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 sm:px-4" data-testid="chat-messages">
                 {messages.map((msg, idx) => (
                   <div key={idx} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                     {msg.role === "assistant" && (
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                        <Bot className="w-4 h-4 text-primary" />
+                      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
+                        <Bot className="w-3.5 h-3.5 text-primary" />
                       </div>
                     )}
                     <div
-                      className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                      className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-[14px] leading-relaxed ${
                         msg.role === "user"
                           ? "bg-primary text-primary-foreground rounded-br-sm"
                           : "bg-muted text-foreground rounded-bl-sm"
@@ -613,20 +637,14 @@ export default function Home() {
 
                 {chatPhase === "awaiting_plan_language" && (
                   <div className="flex gap-2 justify-start">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                      <Languages className="w-4 h-4 text-primary" />
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
+                      <Languages className="w-3.5 h-3.5 text-primary" />
                     </div>
                     <Card className="max-w-[85%] p-3" data-testid="card-plan-language-picker">
-                      <p className="text-sm font-medium mb-2.5">{getLabel("choosePlanLanguage")}</p>
+                      <p className="text-sm font-medium mb-2">{getLabel("choosePlanLanguage")}</p>
                       <div className="flex flex-wrap gap-2">
                         {(["English", "Telugu", "Hindi"] as Language[]).map((lang) => (
-                          <Button
-                            key={lang}
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePlanLanguageSelect(lang)}
-                            data-testid={`button-plan-lang-${lang.toLowerCase()}`}
-                          >
+                          <Button key={lang} variant="outline" size="sm" onClick={() => handlePlanLanguageSelect(lang)} data-testid={`button-plan-lang-${lang.toLowerCase()}`}>
                             {lang === "English" ? "English" : lang === "Telugu" ? "తెలుగు" : "हिन्दी"}
                           </Button>
                         ))}
@@ -637,51 +655,40 @@ export default function Home() {
 
                 {treatmentPlan && planLanguage && (
                   <div className="flex gap-2 justify-start">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                      <Bot className="w-4 h-4 text-primary" />
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
+                      <Bot className="w-3.5 h-3.5 text-primary" />
                     </div>
-                    <div className="max-w-[80%]">
+                    <div className="max-w-[82%]">
                       {pdfUrl ? (
-                        <div
-                          className="bg-muted rounded-2xl rounded-bl-sm overflow-hidden cursor-pointer"
-                          onClick={() => window.open(pdfUrl, "_blank")}
-                          data-testid="card-pdf-preview"
-                        >
-                          <div className="bg-primary/10 px-4 py-3 flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-md bg-red-500/90 flex items-center justify-center flex-shrink-0">
-                              <FileText className="w-5 h-5 text-white" />
+                        <div className="bg-muted rounded-2xl rounded-bl-sm overflow-hidden cursor-pointer" onClick={() => window.open(pdfUrl, "_blank")} data-testid="card-pdf-preview">
+                          <div className="bg-primary/10 px-3 py-2.5 flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-md bg-red-500/90 flex items-center justify-center flex-shrink-0">
+                              <FileText className="w-4.5 h-4.5 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-foreground truncate" data-testid="text-pdf-title">
-                                {planLanguage === "Telugu" ? "7-రోజుల చికిత్స ప్రణాళిక" : planLanguage === "Hindi" ? "7-दिन की उपचार योजना" : "7-Day Treatment Plan"}
+                                {planLanguage === "Telugu" ? "7-రోజుల ప్రణాళిక" : planLanguage === "Hindi" ? "7-दिन की योजना" : "7-Day Treatment Plan"}
                               </p>
-                              <p className="text-xs text-muted-foreground">PDF &middot; KhetSathi</p>
+                              <p className="text-[11px] text-muted-foreground">PDF</p>
                             </div>
                           </div>
-                          <div className="px-4 py-2 flex items-center justify-between gap-2">
-                            <span className="text-xs text-muted-foreground">
+                          <div className="px-3 py-2 flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-muted-foreground">
                               {planLanguage === "Telugu" ? "తెలుగు" : planLanguage === "Hindi" ? "हिन्दी" : "English"}
                             </span>
-                            <a
-                              href={pdfUrl}
-                              download
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 text-xs font-medium text-primary"
-                              data-testid="button-download-pdf"
-                            >
+                            <a href={pdfUrl} download target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-primary" data-testid="button-download-pdf">
                               <Download className="w-3.5 h-3.5" />
                               {planLanguage === "Telugu" ? "డౌన్‌లోడ్" : planLanguage === "Hindi" ? "डाउनलोड" : "Download"}
                             </a>
                           </div>
                         </div>
                       ) : (
-                        <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3" data-testid="card-plan-text-fallback">
-                          <div className="flex items-center gap-2 mb-2">
+                        <div className="bg-muted rounded-2xl rounded-bl-sm px-3 py-2.5" data-testid="card-plan-text-fallback">
+                          <div className="flex items-center gap-2 mb-1.5">
                             <FileText className="w-4 h-4 text-primary" />
                             <p className="text-sm font-medium text-foreground">
-                              {planLanguage === "Telugu" ? "7-రోజుల చికిత్స ప్రణాళిక" : planLanguage === "Hindi" ? "7-दिन की उपचार योजना" : "7-Day Treatment Plan"}
+                              {planLanguage === "Telugu" ? "7-రోజుల ప్రణాళిక" : planLanguage === "Hindi" ? "7-दिन की योजना" : "7-Day Treatment Plan"}
                             </p>
                           </div>
                           <p className="text-xs text-muted-foreground">
@@ -690,18 +697,11 @@ export default function Home() {
                         </div>
                       )}
                       <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                        <span className="text-xs text-muted-foreground">{getLabel("getPlanIn")}:</span>
+                        <span className="text-[11px] text-muted-foreground">{getLabel("getPlanIn")}:</span>
                         {(["English", "Telugu", "Hindi"] as Language[]).filter((l) => l !== planLanguage).map((lang) => (
-                          <Button
-                            key={lang}
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => regeneratePlanInLanguage(lang)}
-                            disabled={isTyping}
-                            data-testid={`button-regen-plan-${lang.toLowerCase()}`}
-                          >
+                          <Button key={lang} variant="ghost" size="sm" onClick={() => regeneratePlanInLanguage(lang)} disabled={isTyping} data-testid={`button-regen-plan-${lang.toLowerCase()}`}>
                             <Languages className="w-3.5 h-3.5 mr-1" />
-                            {lang === "English" ? "English" : lang === "Telugu" ? "తెలుగు" : "हिन्दी"}
+                            {lang === "English" ? "English" : lang === "Telugu" ? "తెలుగు" : "हिन్दी"}
                           </Button>
                         ))}
                       </div>
@@ -711,33 +711,28 @@ export default function Home() {
 
                 {isTyping && (
                   <div className="flex gap-2 justify-start">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                      <Bot className="w-4 h-4 text-primary" />
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
+                      <Bot className="w-3.5 h-3.5 text-primary" />
                     </div>
                     <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3 text-sm">
                       <div className="flex gap-1.5 items-center">
-                        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                        <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                       </div>
                     </div>
                   </div>
                 )}
-
                 <div ref={chatEndRef} />
               </div>
 
               {isVoiceActive && (
                 <div className="border-t border-border bg-card">
-                  <VoiceChat
-                    phone={phoneNumber}
-                    language={language}
-                    onClose={() => setIsVoiceActive(false)}
-                  />
+                  <VoiceChat phone={phoneNumber} language={language} onClose={() => setIsVoiceActive(false)} />
                 </div>
               )}
 
-              <div className="border-t border-border px-3 py-2.5 bg-card">
+              <div className="border-t border-border px-3 py-2 bg-card pb-[env(safe-area-inset-bottom,8px)]">
                 <div className="flex gap-2 items-center max-w-lg mx-auto">
                   <Input
                     ref={chatInputRef}
@@ -745,7 +740,7 @@ export default function Home() {
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
                     placeholder={getLabel("typeMessage")}
-                    className="flex-1"
+                    className="flex-1 h-10"
                     disabled={isTyping || chatPhase === "awaiting_plan_language" || isVoiceActive}
                     data-testid="input-chat"
                   />
@@ -770,7 +765,7 @@ export default function Home() {
 
       {currentStep !== "chat" && (
         <footer className="border-t border-border mt-auto">
-          <div className="max-w-lg mx-auto px-4 py-3 text-center text-xs text-muted-foreground">
+          <div className="max-w-lg mx-auto px-4 py-2.5 text-center text-[11px] text-muted-foreground">
             {getLabel("title")} &mdash; {getLabel("footer")}
           </div>
         </footer>
