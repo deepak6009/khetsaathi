@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, X, Camera, Phone as PhoneIcon, Globe, ArrowRight, Check, Send, Bot, Languages, FileText, Download, Mic, MapPin, History, Monitor } from "lucide-react";
+import { Upload, X, Camera, Phone as PhoneIcon, Globe, ArrowRight, ArrowLeft, Check, Send, Bot, Languages, FileText, Download, Mic, MapPin, History, Monitor, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import VoiceChat from "@/components/voice-chat";
@@ -48,6 +48,8 @@ const labels = {
   detectingLocation: { English: "Detecting your location...", Telugu: "మీ స్థానాన్ని గుర్తిస్తోంది...", Hindi: "आपका स्थान पता लगा रहा है..." } as Record<Language, string>,
   locationDetected: { English: "Location detected", Telugu: "స్థానం గుర్తించబడింది", Hindi: "स्थान पता चला" } as Record<Language, string>,
   history: { English: "My History", Telugu: "నా చరిత్ర", Hindi: "मेरा इतिहास" } as Record<Language, string>,
+  back: { English: "Back", Telugu: "వెనక్కి", Hindi: "वापस" } as Record<Language, string>,
+  newDiagnosis: { English: "New Diagnosis", Telugu: "కొత్త రోగ నిర్ధారణ", Hindi: "नया निदान" } as Record<Language, string>,
   kioskTitle: { English: "Kiosk Mode", Telugu: "కియోస్క్ మోడ్", Hindi: "कियोस्क मोड" } as Record<Language, string>,
   kioskDesc: { English: "Village kiosk support for farmers without smartphones", Telugu: "స్మార్ట్‌ఫోన్ లేని రైతుల కోసం గ్రామ కియోస్క్ సపోర్ట్", Hindi: "बिना स्मार्टफोन वाले किसानों के लिए गांव कियोस्क सपोर्ट" } as Record<Language, string>,
   comingSoon: { English: "Coming Soon", Telugu: "త్వరలో వస్తోంది", Hindi: "जल्द आ रहा है" } as Record<Language, string>,
@@ -377,12 +379,35 @@ export default function Home() {
               </div>
             </div>
             {currentStep === "chat" && phoneNumber && (
-              <Link href={`/history?phone=${encodeURIComponent(phoneNumber)}&lang=${language}`}>
-                <Button variant="ghost" size="sm" className="text-primary-foreground/80 gap-1.5" data-testid="button-history">
-                  <History className="w-4 h-4" />
-                  <span className="hidden sm:inline">{getLabel("history")}</span>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="sm" className="text-primary-foreground/80 gap-1.5" data-testid="button-new-diagnosis"
+                  onClick={() => {
+                    setCurrentStep("upload");
+                    setSelectedFiles([]);
+                    setPreviews([]);
+                    setImageUrls([]);
+                    setMessages([]);
+                    setChatInput("");
+                    setChatPhase("gathering");
+                    setExtractedCrop(null);
+                    setExtractedLocation(null);
+                    setDiagnosis(null);
+                    setTreatmentPlan(null);
+                    setPlanLanguage(null);
+                    setPdfUrl(null);
+                    setDiagnosisInProgress(false);
+                    setIsVoiceActive(false);
+                  }}>
+                  <RotateCcw className="w-4 h-4" />
+                  <span className="hidden sm:inline">{getLabel("newDiagnosis")}</span>
                 </Button>
-              </Link>
+                <Link href={`/history?phone=${encodeURIComponent(phoneNumber)}&lang=${language}`}>
+                  <Button variant="ghost" size="sm" className="text-primary-foreground/80 gap-1.5" data-testid="button-history">
+                    <History className="w-4 h-4" />
+                    <span className="hidden sm:inline">{getLabel("history")}</span>
+                  </Button>
+                </Link>
+              </div>
             )}
           </div>
         </div>
@@ -398,14 +423,17 @@ export default function Home() {
                 const isDone = realIdx < stepIndex;
                 return (
                   <div key={step} className="flex items-center flex-1 gap-1">
-                    <div
+                    <button
+                      type="button"
+                      disabled={!isDone}
+                      onClick={() => isDone && setCurrentStep(step)}
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-colors ${
-                        isDone ? "bg-primary text-primary-foreground" : isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                        isDone ? "bg-primary text-primary-foreground cursor-pointer" : isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                       }`}
                       data-testid={`step-indicator-${step}`}
                     >
                       {isDone ? <Check className="w-4 h-4" /> : stepLabels[step]}
-                    </div>
+                    </button>
                     {idx < 2 && (
                       <div className={`flex-1 h-0.5 rounded-full transition-colors ${stepOrder.indexOf(step) < stepIndex ? "bg-primary" : "bg-muted"}`} />
                     )}
@@ -473,6 +501,10 @@ export default function Home() {
 
           {currentStep === "phone" && (
             <motion.div key="phone" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }}>
+              <Button variant="ghost" size="sm" className="gap-1.5 mb-3" onClick={() => setCurrentStep("language")} data-testid="button-back-phone">
+                <ArrowLeft className="w-4 h-4" />
+                {getLabel("back")}
+              </Button>
               <Card className="p-5 sm:p-6">
                 <div className="text-center mb-6">
                   <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
@@ -509,6 +541,10 @@ export default function Home() {
 
           {currentStep === "upload" && (
             <motion.div key="upload" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }}>
+              <Button variant="ghost" size="sm" className="gap-1.5 mb-3" onClick={() => setCurrentStep("phone")} data-testid="button-back-upload">
+                <ArrowLeft className="w-4 h-4" />
+                {getLabel("back")}
+              </Button>
               <Card className="p-5 sm:p-6">
                 <div className="text-center mb-5">
                   <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
