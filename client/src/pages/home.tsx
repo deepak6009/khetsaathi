@@ -593,7 +593,7 @@ export default function Home() {
 
         {onboardingStep !== "welcome" && (
           <div className="max-w-lg mx-auto w-full px-5 pt-5">
-            <div className="flex items-center justify-center">
+            <div className="flex items-start justify-center">
               {visibleSteps.map((step, idx) => {
                 const isActive = idx === currentVisibleIdx;
                 const isDone = idx < currentVisibleIdx;
@@ -604,7 +604,7 @@ export default function Home() {
                       type="button"
                       disabled={!isDone}
                       onClick={() => isDone && setOnboardingStep(step)}
-                      className="flex items-center gap-2 flex-shrink-0"
+                      className="flex flex-col items-center gap-1 flex-shrink-0"
                       data-testid={`step-indicator-${step}`}
                     >
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-all duration-200 ${
@@ -616,12 +616,12 @@ export default function Home() {
                       >
                         {isDone ? <Check className="w-4 h-4" /> : idx + 1}
                       </div>
-                      <span className={`text-[13px] font-semibold ${langSpace(language)} ${isActive || isDone ? "text-gray-900" : "text-gray-400"}`}>
+                      <span className={`text-[11px] font-semibold ${langSpace(language)} ${isActive || isDone ? "text-gray-900" : "text-gray-400"}`}>
                         {getLabel(stepLabelKey)}
                       </span>
                     </button>
                     {idx < visibleSteps.length - 1 && (
-                      <div className={`w-10 h-[2px] mx-3 rounded-full transition-colors duration-300 ${idx < currentVisibleIdx ? "" : "bg-gray-200"}`}
+                      <div className={`w-10 h-[2px] mx-3 mb-5 rounded-full transition-colors duration-300 ${idx < currentVisibleIdx ? "" : "bg-gray-200"}`}
                         style={idx < currentVisibleIdx ? { backgroundColor: "#6BC30D" } : undefined}
                       />
                     )}
