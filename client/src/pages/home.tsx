@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import VoiceChat from "@/components/voice-chat";
 import logoImage from "@assets/Blue_and_Green_Farmers_Instagram_Post_(2)_1771525392133.png";
-import farmerRefImage from "@assets/image_1771528574027.png";
+import farmerRefImage from "@assets/farmer_ref_optimized.jpg";
 
 type AppScreen = "onboarding" | "dashboard" | "capture" | "chat";
 type OnboardingStep = "language" | "phone" | "selfie" | "welcome";
@@ -122,7 +122,7 @@ function AppHeader({
           {showBack && onBack ? (
             <button
               onClick={onBack}
-              className={`flex items-center gap-0.5 active:opacity-70 -ml-1 ${dark ? "text-white/70" : "text-gray-500"}`}
+              className={`flex items-center gap-0.5 active:opacity-70 -ml-1 ${dark ? "text-white/80" : "text-gray-700"}`}
               data-testid="button-back-header"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -610,13 +610,13 @@ export default function Home() {
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-all duration-200 ${
                         isDone ? "text-white shadow-sm"
                           : isActive ? "text-white shadow-sm ring-[3px] ring-[#6BC30D]/20"
-                          : "bg-gray-200 text-gray-500"
+                          : "bg-gray-200 text-gray-600"
                       }`}
                         style={(isDone || isActive) ? { backgroundColor: "#6BC30D" } : undefined}
                       >
                         {isDone ? <Check className="w-4 h-4" /> : idx + 1}
                       </div>
-                      <span className={`text-[11px] font-semibold ${langSpace(language)} ${isActive || isDone ? "text-gray-900" : "text-gray-400"}`}>
+                      <span className={`text-[12px] font-semibold ${langSpace(language)} ${isActive || isDone ? "text-gray-900" : "text-gray-500"}`}>
                         {getLabel(stepLabelKey)}
                       </span>
                     </button>
@@ -639,7 +639,7 @@ export default function Home() {
                 <div className="space-y-6">
                   <div className="text-center space-y-2">
                     <h2 className={`text-2xl font-bold text-gray-900 tracking-tight ${langSpace(language)}`}>{getLabel("chooseLanguage")}</h2>
-                    <p className={`text-[15px] text-gray-500 ${langSpace(language)}`}>{getLabel("languageHint")}</p>
+                    <p className={`text-[15px] text-gray-600 ${langSpace(language)}`}>{getLabel("languageHint")}</p>
                   </div>
                   <div className="space-y-3">
                     {(["English", "Telugu", "Hindi"] as Language[]).map((lang) => {
@@ -657,7 +657,7 @@ export default function Home() {
                           data-testid={`button-lang-${lang.toLowerCase()}`}
                         >
                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 transition-all duration-200 ${
-                            isSelected ? "text-white" : "bg-gray-100 text-gray-500"
+                            isSelected ? "text-white" : "bg-gray-100 text-gray-600"
                           }`}
                             style={isSelected ? { backgroundColor: "#6BC30D" } : undefined}
                           >
@@ -665,7 +665,7 @@ export default function Home() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-gray-900 text-base leading-relaxed">{nativeNames[lang]}</p>
-                            <p className="text-[13px] text-gray-400 mt-0.5">{lang}</p>
+                            <p className="text-[13px] text-gray-600 mt-0.5">{lang}</p>
                           </div>
                           <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200`}
                             style={isSelected ? { borderColor: "#6BC30D", backgroundColor: "#6BC30D" } : { borderColor: "#d1d5db" }}
@@ -703,7 +703,7 @@ export default function Home() {
                     )}
                     <div className="space-y-1.5">
                       <h2 className={`text-2xl font-bold text-gray-900 tracking-tight ${langSpace(language)}`}>{getLabel("enterPhone")}</h2>
-                      <p className={`text-[15px] text-gray-500 ${langSpace(language)}`}>{getLabel("phoneHint")}</p>
+                      <p className={`text-[15px] text-gray-600 ${langSpace(language)}`}>{getLabel("phoneHint")}</p>
                     </div>
                   </div>
                   <div className="space-y-5">
@@ -740,7 +740,7 @@ export default function Home() {
                 <div className="space-y-5">
                   <div className="text-center space-y-2">
                     <h2 className={`text-2xl font-bold text-gray-900 tracking-tight ${langSpace(language)}`}>{getLabel("selfieTitle")}</h2>
-                    <p className={`text-[15px] text-gray-500 ${langSpace(language)}`}>{getLabel("selfieDesc")}</p>
+                    <p className={`text-[15px] text-gray-600 ${langSpace(language)}`}>{getLabel("selfieDesc")}</p>
                   </div>
 
                   <div className="relative w-full max-w-[280px] mx-auto">
@@ -812,7 +812,7 @@ export default function Home() {
                     )}
                     <button
                       onClick={skipSelfie}
-                      className={`w-full text-center text-[14px] font-medium text-gray-400 py-2 active:text-gray-500 ${langSpace(language)}`}
+                      className={`w-full text-center text-[14px] font-medium text-gray-600 py-2 active:text-gray-700 ${langSpace(language)}`}
                       disabled={selfieUploading}
                       data-testid="button-skip-selfie"
                     >
@@ -828,14 +828,14 @@ export default function Home() {
                 <div className="flex flex-col items-center text-center space-y-6">
                   <div className="w-full grid grid-cols-2 gap-3 mb-2">
                     <div className="rounded-2xl bg-white/10 border border-white/15 aspect-[4/5] flex items-center justify-center">
-                      <Leaf className="w-10 h-10 text-white/30" />
+                      <Leaf className="w-10 h-10 text-white/50" />
                     </div>
                     <div className="space-y-3">
                       <div className="rounded-2xl bg-white/10 border border-white/15 aspect-square flex items-center justify-center">
-                        <Sprout className="w-8 h-8 text-white/30" />
+                        <Sprout className="w-8 h-8 text-white/50" />
                       </div>
                       <div className="rounded-2xl bg-white/10 border border-white/15 aspect-square flex items-center justify-center">
-                        <ScanLine className="w-8 h-8 text-white/30" />
+                        <ScanLine className="w-8 h-8 text-white/50" />
                       </div>
                     </div>
                   </div>
@@ -844,7 +844,7 @@ export default function Home() {
                     <h2 className={`text-[28px] font-extrabold text-white tracking-tight leading-tight ${langSpace(language)}`}>
                       {getLabel("welcomeTitle")}
                     </h2>
-                    <p className={`text-[15px] text-white/60 max-w-[300px] mx-auto ${langSpace(language)}`}>
+                    <p className={`text-[15px] text-white/80 max-w-[300px] mx-auto ${langSpace(language)}`}>
                       {getLabel("welcomeDesc")}
                     </p>
                   </div>
@@ -874,7 +874,7 @@ export default function Home() {
                     <span className={langSpace(language)}>{getLabel("startNow")}</span> <ArrowRight className="w-5 h-5" />
                   </Button>
 
-                  <p className={`text-xs text-white/30 font-medium mt-2 ${langSpace(language)}`}>
+                  <p className={`text-xs text-white/60 font-medium mt-2 ${langSpace(language)}`}>
                     {getLabel("swipeToStart")}
                   </p>
                 </div>
@@ -885,7 +885,7 @@ export default function Home() {
 
         {!isDarkScreen && (
           <footer className="mt-auto">
-            <div className="max-w-lg mx-auto px-4 py-4 text-center text-xs text-gray-400 font-medium">
+            <div className="max-w-lg mx-auto px-4 py-4 text-center text-xs text-gray-500 font-medium">
               KhetSaathi &middot; {getLabel("footer")}
             </div>
           </footer>
@@ -920,13 +920,13 @@ export default function Home() {
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className={`text-[11px] text-gray-400 font-medium ${langSpaceTight(language)}`}>{getGreeting()}</p>
+              <p className={`text-[11px] text-gray-600 font-medium ${langSpaceTight(language)}`}>{getGreeting()}</p>
               <p className="text-[15px] font-bold text-gray-900 leading-tight">{formatPhone(phoneNumber)}</p>
             </div>
             {userLocation && (
               <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
                 <MapPin className="w-3 h-3" style={{ color: "#6BC30D" }} />
-                <span className="text-[11px] text-gray-500 font-medium max-w-[100px] truncate">{userLocation}</span>
+                <span className="text-[11px] text-gray-700 font-medium max-w-[100px] truncate">{userLocation}</span>
               </div>
             )}
           </motion.div>
@@ -944,9 +944,9 @@ export default function Home() {
                 </div>
                 <div className="text-left flex-1">
                   <p className={`text-xl font-extrabold leading-tight tracking-tight ${langSpace(language)}`}>{getLabel("scanCrop")}</p>
-                  <p className={`text-[13px] text-white/55 mt-1.5 font-medium ${langSpace(language)}`}>{getLabel("scanDesc")}</p>
+                  <p className={`text-[13px] text-white/80 mt-1.5 font-medium ${langSpace(language)}`}>{getLabel("scanDesc")}</p>
                 </div>
-                <ChevronRight className="w-5 h-5 text-white/30 flex-shrink-0" />
+                <ChevronRight className="w-5 h-5 text-white/60 flex-shrink-0" />
               </div>
             </button>
           </motion.div>
@@ -979,7 +979,7 @@ export default function Home() {
 
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.16 }}>
             <div className="flex items-center justify-between gap-2 mb-3">
-              <h3 className={`text-[13px] font-semibold text-gray-400 uppercase tracking-wider ${langSpaceTight(language)}`}>{getLabel("recentDiagnoses")}</h3>
+              <h3 className={`text-[13px] font-semibold text-gray-600 uppercase tracking-wider ${langSpaceTight(language)}`}>{getLabel("recentDiagnoses")}</h3>
               {recentHistory.length > 0 && (
                 <Link href={`/history?phone=${encodeURIComponent(phoneNumber)}&lang=${language}`}>
                   <span className="text-[13px] font-semibold flex items-center gap-0.5" style={{ color: "#6BC30D" }}>
@@ -996,10 +996,10 @@ export default function Home() {
             ) : recentHistory.length === 0 ? (
               <div className="text-center py-14 rounded-2xl bg-gray-50 border border-gray-100">
                 <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
-                  <Leaf className="w-7 h-7 text-gray-300" />
+                  <Leaf className="w-7 h-7 text-gray-400" />
                 </div>
-                <p className={`text-[15px] font-semibold text-gray-400 ${langSpace(language)}`}>{getLabel("noDiagnoses")}</p>
-                <p className={`text-[13px] text-gray-300 mt-1 ${langSpace(language)}`}>{getLabel("noDiagnosesHint")}</p>
+                <p className={`text-[15px] font-semibold text-gray-600 ${langSpace(language)}`}>{getLabel("noDiagnoses")}</p>
+                <p className={`text-[13px] text-gray-500 mt-1 ${langSpace(language)}`}>{getLabel("noDiagnosesHint")}</p>
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -1010,7 +1010,7 @@ export default function Home() {
                         <img src={item.imageUrls[0]} alt="Crop" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
                       ) : (
                         <div className="w-14 h-14 rounded-xl bg-gray-50 flex items-center justify-center flex-shrink-0">
-                          <Sprout className="w-6 h-6 text-gray-300" />
+                          <Sprout className="w-6 h-6 text-gray-400" />
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
@@ -1018,9 +1018,9 @@ export default function Home() {
                           <p className={`text-[14px] font-bold text-gray-900 truncate ${langSpaceTight(language)}`}>{item.diagnosis.disease}</p>
                         )}
                         {item.diagnosis?.crop_identified && (
-                          <p className={`text-[13px] text-gray-500 truncate mt-0.5 ${langSpaceTight(language)}`}>{item.diagnosis.crop_identified}</p>
+                          <p className={`text-[13px] text-gray-700 truncate mt-0.5 ${langSpaceTight(language)}`}>{item.diagnosis.crop_identified}</p>
                         )}
-                        <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1 font-medium">
+                        <p className="text-[11px] text-gray-600 mt-1.5 flex items-center gap-1 font-medium">
                           <CalendarDays className="w-3 h-3" />
                           {new Date(item.timestamp).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                         </p>
@@ -1037,7 +1037,7 @@ export default function Home() {
         </main>
 
         <footer className="mt-auto">
-          <div className="max-w-lg mx-auto px-4 py-4 text-center text-xs text-gray-300 font-medium">
+          <div className="max-w-lg mx-auto px-4 py-4 text-center text-xs text-gray-500 font-medium">
             KhetSaathi &middot; {getLabel("footer")}
           </div>
         </footer>
@@ -1058,7 +1058,7 @@ export default function Home() {
           <div className="space-y-6">
             <div className="text-center space-y-2">
               <h2 className={`text-2xl font-bold text-gray-900 tracking-tight ${langSpace(language)}`}>{getLabel("uploadPhotos")}</h2>
-              <p className={`text-[15px] text-gray-500 ${langSpace(language)}`}>{getLabel("uploadHint")}</p>
+              <p className={`text-[15px] text-gray-600 ${langSpace(language)}`}>{getLabel("uploadHint")}</p>
             </div>
 
             {previews.length === 0 ? (
@@ -1073,7 +1073,7 @@ export default function Home() {
                 </div>
                 <div className="text-center">
                   <span className={`text-base font-bold text-gray-900 block ${langSpace(language)}`}>{getLabel("tapToCapture")}</span>
-                  <span className="text-[13px] text-gray-400 mt-1 block">1-6 photos</span>
+                  <span className="text-[13px] text-gray-600 mt-1 block">1-6 photos</span>
                 </div>
               </button>
             ) : (
@@ -1130,7 +1130,7 @@ export default function Home() {
         onBack={goToDashboard}
         backLabel={getLabel("back")}
         rightContent={
-          <Button variant="ghost" size="sm" className="text-gray-500 gap-1.5 text-xs h-8 rounded-lg px-2" data-testid="button-new-diagnosis"
+          <Button variant="ghost" size="sm" className="text-gray-700 gap-1.5 text-xs h-8 rounded-lg px-2" data-testid="button-new-diagnosis"
             onClick={() => { goToDashboard(); setTimeout(goToCapture, 100); }}>
             <RotateCcw className="w-3.5 h-3.5" />
             <span className={langSpaceTight(language)}>{getLabel("newDiagnosis")}</span>
@@ -1195,7 +1195,7 @@ export default function Home() {
                         <p className={`text-[14px] font-bold text-gray-900 truncate ${langSpaceTight(language)}`} data-testid="text-pdf-title">
                           {planLanguage === "Telugu" ? "7-రోజుల ప్రణాళిక" : planLanguage === "Hindi" ? "7-दिन की योजना" : "7-Day Treatment Plan"}
                         </p>
-                        <p className="text-[12px] text-gray-400 font-medium">PDF &middot; {planLanguage === "Telugu" ? "తెలుగు" : planLanguage === "Hindi" ? "हिन्दी" : "English"}</p>
+                        <p className="text-[12px] text-gray-600 font-medium">PDF &middot; {planLanguage === "Telugu" ? "తెలుగు" : planLanguage === "Hindi" ? "हिन्दी" : "English"}</p>
                       </div>
                       <a href={pdfUrl} download target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
                         className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#6BC30D15" }}
@@ -1215,7 +1215,7 @@ export default function Home() {
                   </div>
                 )}
                 <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                  <span className={`text-xs text-gray-400 font-medium ${langSpaceTight(language)}`}>{getLabel("getPlanIn")}:</span>
+                  <span className={`text-xs text-gray-600 font-medium ${langSpaceTight(language)}`}>{getLabel("getPlanIn")}:</span>
                   {(["English", "Telugu", "Hindi"] as Language[]).filter((l) => l !== planLanguage).map((lang) => (
                     <Button key={lang} variant="ghost" size="sm" onClick={() => regeneratePlanInLanguage(lang)} disabled={isTyping} className="text-xs h-7 rounded-lg font-semibold" data-testid={`button-regen-plan-${lang.toLowerCase()}`}>
                       <Languages className="w-3 h-3 mr-1" />
@@ -1263,7 +1263,7 @@ export default function Home() {
               data-testid="input-chat"
             />
             <button onClick={() => setIsVoiceActive(!isVoiceActive)} disabled={isTyping}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${isVoiceActive ? "text-white shadow-md" : "bg-gray-50 border border-gray-200 text-gray-500"}`}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${isVoiceActive ? "text-white shadow-md" : "bg-gray-50 border border-gray-200 text-gray-700"}`}
               style={isVoiceActive ? { backgroundColor: "#6BC30D" } : undefined}
               data-testid="button-voice-call">
               <Mic className="w-[18px] h-[18px]" />

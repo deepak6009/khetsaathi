@@ -62,7 +62,7 @@ export default function HistoryPage() {
           <div className="w-24 flex items-center">
             <button
               onClick={() => navigate("/")}
-              className="flex items-center gap-0.5 text-gray-500 active:opacity-70 -ml-1"
+              className="flex items-center gap-0.5 text-gray-700 active:opacity-70 -ml-1"
               data-testid="button-back"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -85,15 +85,15 @@ export default function HistoryPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <Loader2 className="w-5 h-5 animate-spin" style={{ color: "#6BC30D" }} />
-            <p className={`text-[14px] text-gray-400 font-medium ${langSpace(lang)}`}>{getLabel("loading")}</p>
+            <p className={`text-[14px] text-gray-600 font-medium ${langSpace(lang)}`}>{getLabel("loading")}</p>
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-14 rounded-2xl bg-gray-50 border border-gray-100">
             <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
-              <Leaf className="w-7 h-7 text-gray-300" />
+              <Leaf className="w-7 h-7 text-gray-400" />
             </div>
-            <p className={`text-[15px] font-semibold text-gray-400 ${langSpace(lang)}`}>{getLabel("noHistory")}</p>
-            <p className={`text-[13px] text-gray-300 mt-1 ${langSpace(lang)}`}>{getLabel("noHistoryHint")}</p>
+            <p className={`text-[15px] font-semibold text-gray-600 ${langSpace(lang)}`}>{getLabel("noHistory")}</p>
+            <p className={`text-[13px] text-gray-500 mt-1 ${langSpace(lang)}`}>{getLabel("noHistoryHint")}</p>
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -104,7 +104,7 @@ export default function HistoryPage() {
                     <img src={item.imageUrls[0]} alt="Crop" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
                   ) : (
                     <div className="w-14 h-14 rounded-xl bg-gray-50 flex items-center justify-center flex-shrink-0">
-                      <Sprout className="w-6 h-6 text-gray-300" />
+                      <Sprout className="w-6 h-6 text-gray-400" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
@@ -112,9 +112,9 @@ export default function HistoryPage() {
                       <p className={`text-[14px] font-bold text-gray-900 truncate ${langSpaceTight(lang)}`}>{item.diagnosis.disease}</p>
                     )}
                     {item.diagnosis?.crop_identified && (
-                      <p className={`text-[13px] text-gray-500 truncate mt-0.5 ${langSpaceTight(lang)}`}>{item.diagnosis.crop_identified}</p>
+                      <p className={`text-[13px] text-gray-700 truncate mt-0.5 ${langSpaceTight(lang)}`}>{item.diagnosis.crop_identified}</p>
                     )}
-                    <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1 font-medium">
+                    <p className="text-[11px] text-gray-600 mt-1.5 flex items-center gap-1 font-medium">
                       <CalendarDays className="w-3 h-3" />
                       {new Date(item.timestamp).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
