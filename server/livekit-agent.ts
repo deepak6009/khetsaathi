@@ -85,7 +85,6 @@ export default defineAgent({
     const agent = new voice.Agent({
       instructions: KHETSATHI_VOICE_PROMPT + `\n\nThe farmer's preferred language is ${language}. Start the conversation in ${language}, but if they speak in a different language, switch to match them.`,
       llm: new google.beta.realtime.RealtimeModel({
-        model: 'gemini-2.0-flash-exp',
         voice: 'Kore',
         apiKey: process.env.GEMINI_API_KEY,
         temperature: 0.7,
