@@ -1,7 +1,35 @@
+import { pgTable, text, varchar, timestamp, integer } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+export const users = pgTable("users", {
+  phone: varchar("phone", { length: 15 }).primaryKey(),
+  language: varchar("language", { length: 10 }).default("English"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const otps = pgTable("otps", {
+  phone: varchar("phone", { length: 15 }).primaryKey(),
+  code: varchar("code", { length: 6 }).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  attempts: integer("attempts").default(0),
+});
+
+export const insertUserSchema = createInsertSchema(users).pick({ phone: true, language: true });
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
 
 export const languageSchema = z.enum(["English", "Telugu", "Hindi"]);
 export type Language = z.infer<typeof languageSchema>;
+
+export const phoneSchema = z.object({
+  phone: z.string().min(10).max(15).regex(/^\+?\d{10,15}$/, "Enter a valid phone number"),
+});
+
+export const otpVerifySchema = z.object({
+  phone: z.string().min(10).max(15),
+  code: z.string().length(6),
+});
 
 export const diagnoseRequestSchema = z.object({
   images: z.array(z.string()).min(1).max(3),
@@ -32,8 +60,3 @@ export const treatmentPlanRequestSchema = z.object({
   summary: z.string(),
 });
 export type TreatmentPlanRequest = z.infer<typeof treatmentPlanRequestSchema>;
-
-export const uploadResponseSchema = z.object({
-  urls: z.array(z.string()),
-});
-export type UploadResponse = z.infer<typeof uploadResponseSchema>;
