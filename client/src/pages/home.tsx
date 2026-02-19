@@ -60,7 +60,7 @@ const labels = {
   analyzeBtn: { English: "Analyze Crop", Telugu: "పంటను విశ్లేషించు", Hindi: "फसल का विश्लेषण करें" } as Record<Language, string>,
   uploading: { English: "Uploading...", Telugu: "అప్‌లోడ్ అవుతోంది...", Hindi: "अपलोड हो रहा है..." } as Record<Language, string>,
   maxImages: { English: "Maximum 3 images allowed", Telugu: "గరిష్టంగా 3 చిత్రాలు అనుమతించబడతాయి", Hindi: "अधिकतम 3 छवियाँ अनुमत हैं" } as Record<Language, string>,
-  typeMessage: { English: "Type your message...", Telugu: "మీ సందేశం టైప్ చేయండి...", Hindi: "अपना संदेश टाइप करें..." } as Record<Language, string>,
+  typeMessage: { English: "Tell me about your crop...", Telugu: "మీ పంట గురించి చెప్పండి...", Hindi: "अपनी फसल के बारे में बताएं..." } as Record<Language, string>,
   planReady: { English: "Your 7-day treatment plan is ready! You can see it below.", Telugu: "మీ 7-రోజుల చికిత్స ప్రణాళిక సిద్ధంగా ఉంది! దిగువ చూడండి.", Hindi: "आपकी 7-दिन की उपचार योजना तैयार है! नीचे देखें." } as Record<Language, string>,
   choosePlanLanguage: { English: "Choose language for your treatment plan", Telugu: "మీ చికిత్స ప్రణాళిక కోసం భాషను ఎంచుకోండి", Hindi: "अपनी उपचार योजना के लिए भाषा चुनें" } as Record<Language, string>,
   getPlanIn: { English: "Get plan in another language", Telugu: "మరొక భాషలో ప్లాన్ పొందండి", Hindi: "दूसरी भाषा में प्लान पाएं" } as Record<Language, string>,
@@ -1200,10 +1200,10 @@ export default function Home() {
                 </div>
               )}
               <div
-                className={`max-w-[78%] px-4 py-3 text-[14px] leading-relaxed ${langSpace(language)} ${
+                className={`max-w-[78%] px-4 py-3.5 text-[15px] font-medium leading-[1.65] ${langSpace(language)} ${
                   msg.role === "user"
                     ? "text-white rounded-2xl rounded-br-sm shadow-lg"
-                    : "text-gray-800 rounded-2xl rounded-bl-sm shadow-sm bg-white/90 backdrop-blur-sm border border-gray-100/80"
+                    : "text-gray-900 rounded-2xl rounded-bl-sm shadow-sm bg-white border border-gray-100"
                 }`}
                 style={msg.role === "user" ? { background: "linear-gradient(135deg, #032B22 0%, #064e3b 100%)" } : undefined}
                 data-testid={`chat-message-${idx}`}
@@ -1307,31 +1307,29 @@ export default function Home() {
           </div>
         )}
 
-        <div className="border-t border-gray-100 px-4 py-3 bg-white/95 backdrop-blur-md pb-[env(safe-area-inset-bottom,10px)]" style={{ boxShadow: "0 -4px 20px rgba(0,0,0,0.03)" }}>
-          <div className="flex gap-2.5 items-center max-w-lg mx-auto">
-            <div className="flex-1 relative">
-              <Input
-                ref={chatInputRef}
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                placeholder={getLabel("typeMessage")}
-                className="h-12 rounded-2xl bg-gray-50/80 border-gray-200/60 text-[15px] pl-4 pr-4 focus:border-green-300 focus:ring-green-200/50 transition-colors"
-                disabled={isTyping || chatPhase === "awaiting_plan_language" || isVoiceActive}
-                data-testid="input-chat"
-              />
-            </div>
+        <div className="px-3 py-3 bg-white pb-[env(safe-area-inset-bottom,8px)]" style={{ boxShadow: "0 -2px 16px rgba(0,0,0,0.06)" }}>
+          <div className="flex gap-2 items-center max-w-lg mx-auto bg-gray-50 rounded-2xl p-1.5 border border-gray-200/80">
+            <Input
+              ref={chatInputRef}
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+              placeholder={getLabel("typeMessage")}
+              className="flex-1 h-11 rounded-xl bg-transparent border-0 text-[15px] font-medium pl-3 pr-1 placeholder:text-gray-400 placeholder:font-normal focus-visible:ring-0 focus-visible:ring-offset-0"
+              disabled={isTyping || chatPhase === "awaiting_plan_language" || isVoiceActive}
+              data-testid="input-chat"
+            />
             <button onClick={() => setIsVoiceActive(!isVoiceActive)} disabled={isTyping}
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all active:scale-95 ${isVoiceActive ? "text-white shadow-lg" : "bg-gray-50/80 border border-gray-200/60 text-gray-600 hover:bg-gray-100"}`}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all active:scale-90 ${isVoiceActive ? "text-white shadow-md" : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/60"}`}
               style={isVoiceActive ? { background: "linear-gradient(135deg, #6BC30D 0%, #4a9a08 100%)" } : undefined}
               data-testid="button-voice-call">
-              <Mic className="w-5 h-5" />
+              <Mic className="w-[18px] h-[18px]" />
             </button>
             <button onClick={sendMessage} disabled={!chatInput.trim() || isTyping || chatPhase === "awaiting_plan_language" || isVoiceActive}
-              className="w-12 h-12 rounded-2xl text-white flex items-center justify-center flex-shrink-0 shadow-lg disabled:opacity-40 transition-all active:scale-95"
+              className="w-10 h-10 rounded-xl text-white flex items-center justify-center flex-shrink-0 shadow-md disabled:opacity-30 transition-all active:scale-90"
               style={{ background: "linear-gradient(135deg, #6BC30D 0%, #4a9a08 100%)" }}
               data-testid="button-send-chat">
-              <Send className="w-5 h-5" />
+              <Send className="w-[18px] h-[18px]" />
             </button>
           </div>
         </div>
