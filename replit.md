@@ -1,4 +1,4 @@
-# KhetSathi - AI Crop Doctor
+# KhetSaathi - AI Crop Doctor
 
 ## Overview
 Agricultural AI assistant where farmers upload crop images and receive disease diagnosis, immediate action recommendations, and personalized 7-day treatment plans through a conversational AI chat interface. Supports English, Telugu, and Hindi languages. Built as a mobile-first SaaS application.
