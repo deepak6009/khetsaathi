@@ -1,0 +1,262 @@
+Build a full-stack web application called KhetSathi – AI Crop Doctor (MVP).
+
+This is an agricultural AI assistant where farmers upload crop images and receive:
+
+Disease diagnosis
+
+Immediate action
+
+Personalized 7-day treatment plan
+
+Do NOT add unnecessary features.
+Do NOT overcomplicate.
+Build a clean modular structure.
+
+🏗 TECH STACK
+
+Backend:
+
+Node.js
+
+Express.js
+
+Axios
+
+Multer
+
+AWS SDK v3
+
+dotenv
+
+cors
+
+Frontend:
+
+Vanilla HTML
+
+CSS
+
+JavaScript (fetch API)
+
+📁 PROJECT STRUCTURE
+
+Create this structure:
+
+khetsathi/
+│
+├── server.js
+├── .env
+│
+├── routes/
+│   ├── upload.js
+│   ├── diagnose.js
+│   └── plan.js
+│
+├── services/
+│   ├── s3Service.js
+│   ├── diseaseService.js
+│   └── geminiService.js
+│
+├── public/
+│   ├── index.html
+│   ├── script.js
+│   └── styles.css
+
+
+Keep code clean and modular.
+
+🌾 APP FLOW
+
+The app should work like this:
+
+Step 1 – Language Selection
+
+Dropdown:
+
+English
+
+Telugu
+
+Hindi
+
+Step 2 – Farmer Inputs
+
+Form should collect:
+
+Upload 1–3 crop images
+
+Crop name (text input)
+
+Location (text input)
+
+Summary from farmer (textarea)
+
+Step 3 – Diagnose Button
+
+When clicked:
+
+Upload images to S3
+
+Get CloudFront public URLs
+
+Call disease detection API
+
+Show diagnosis result on screen
+
+🌐 DISEASE DETECTION API DETAILS
+
+POST request to:
+
+https://8beihzhrx1.execute-api.ap-south-1.amazonaws.com/images
+
+
+Request body format:
+
+{
+  "images": ["cloudfront-url-1", "cloudfront-url-2"],
+  "crop": "tomato",
+  "location": "Andhra Pradesh",
+  "language": "Telugu",
+  "summary": "Farmer description"
+}
+
+
+Return response directly to frontend.
+
+🧪 DIAGNOSIS RESPONSE FORMAT
+
+Display clearly:
+
+Crop Identified
+
+Disease
+
+Confidence
+
+Severity
+
+Symptoms Observed
+
+Recommended Pesticide
+
+Dosage
+
+Immediate Action
+
+Make it clean UI.
+
+🤖 STEP 4 – GENERATE 7-DAY PLAN
+
+Add button:
+
+“Generate 7-Day Plan”
+
+When clicked:
+
+Call Gemini API with:
+
+Inputs:
+
+Disease diagnosis
+
+Farmer summary
+
+Crop
+
+Location
+
+Language
+
+Prompt Gemini like:
+
+Act as an experienced agricultural crop doctor.
+Based on the disease diagnosis and farmer details,
+generate a clear, step-by-step 7-day treatment plan.
+Make it practical and easy to follow.
+Localize response in selected language.
+
+Return structured response.
+
+Display nicely formatted plan.
+
+🔐 ENV VARIABLES (.env)
+
+Expect these:
+
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_REGION=
+S3_BUCKET_NAME=
+CLOUDFRONT_URL=
+GEMINI_API_KEY=
+
+
+Load using dotenv.
+
+☁ S3 Upload Requirements
+
+Accept 1–3 images
+
+Use multer
+
+Upload to S3
+
+Return CloudFront URL:
+CLOUDFRONT_URL + fileKey
+
+🎨 UI REQUIREMENTS
+
+Keep simple but clean:
+
+Green agriculture theme (#2e7d32)
+
+Mobile responsive
+
+Card-style diagnosis display
+
+Loading spinner while calling APIs
+
+Error handling messages
+
+⚠️ IMPORTANT RULES
+
+Do NOT store data in memory permanently.
+
+Do NOT mix business logic inside routes.
+
+Keep API calling logic inside services folder.
+
+Handle errors properly with try/catch.
+
+Keep code readable.
+
+🚫 DO NOT ADD
+
+Tavus avatar
+
+PWA
+
+Login system
+
+Database
+
+Authentication
+
+Real-time conversation
+
+WebSockets
+
+This is MVP only.
+
+🎯 FINAL OUTPUT EXPECTATION
+
+Working web app where:
+
+Farmer →
+Upload images →
+Click Diagnose →
+See disease result →
+Click Generate Plan →
+See 7-day plan
+
+Fully functional.
