@@ -88,7 +88,7 @@ Agricultural AI assistant where farmers upload crop images and receive disease d
 
 ## Design Decisions
 - Mobile-first SaaS architecture with dashboard as central hub
-- Onboarding flow: Language → Phone → Auto GPS Location → Dashboard
+- Onboarding flow: Language → Phone → Welcome → Dashboard
 - Camera/photo capture is the hero action on dashboard
 - Recent diagnoses shown on dashboard for quick reference
 - All navigation buttons show localized "Back" text in selected language
@@ -98,3 +98,15 @@ Agricultural AI assistant where farmers upload crop images and receive disease d
 - Plan language is independent from chat language
 - PDF generated server-side via Puppeteer/Chromium, uploaded to S3
 - Logo asset: `attached_assets/Blue_and_Green_Farmers_Instagram_Post_(2)_1771525392133.png`
+
+## Design System (v2 - Earthy Professional)
+- **Primary color**: Dark forest green hsl(152, 45%, 28%) - #2d6e4e
+- **Background**: Warm off-white hsl(40, 20%, 98%)
+- **Cards**: Pure white with subtle real shadows (shadow-xs, shadow-sm)
+- **Font**: Inter (Google Fonts) - clean, modern sans-serif
+- **Border radius**: 0.625rem (10px) default, 1rem for cards
+- **Headers**: Frosted glass effect (backdrop-blur-md, semi-transparent bg)
+- **Logo**: Centered in header across all screens
+- **Buttons**: Rounded-xl, shadow-sm, active:scale feedback
+- **Palette tone**: Earthy, warm neutrals, olive/forest green accents
+- **No heavy colored header bars** — clean white/transparent approach
