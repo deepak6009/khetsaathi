@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Leaf, Upload, X, Camera, Phone, Globe, ArrowRight, Check, Send, Bot, Languages, FileText, Download } from "lucide-react";
+import { Leaf, Upload, X, Camera, Phone as PhoneIcon, Globe, ArrowRight, Check, Send, Bot, Languages, FileText, Download, Mic } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import VoiceChat from "@/components/voice-chat";
 
 type Step = "phone" | "language" | "upload" | "chat";
 const stepOrder: Step[] = ["phone", "language", "upload", "chat"];
@@ -43,6 +44,7 @@ export default function Home() {
   const [planLanguage, setPlanLanguage] = useState<Language | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [diagnosisInProgress, setDiagnosisInProgress] = useState(false);
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
 
   const stepIndex = stepOrder.indexOf(currentStep);
 
@@ -376,7 +378,7 @@ export default function Home() {
               <Card className="p-5 sm:p-6">
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <Phone className="w-8 h-8 text-primary" />
+                    <PhoneIcon className="w-8 h-8 text-primary" />
                   </div>
                   <h2 className="text-xl font-semibold mb-1" data-testid="text-phone-title">{getLabel("enterPhone")}</h2>
                   <p className="text-sm text-muted-foreground">{getLabel("phoneHint")}</p>
@@ -625,6 +627,16 @@ export default function Home() {
                 <div ref={chatEndRef} />
               </div>
 
+              {isVoiceActive && (
+                <div className="border-t border-border bg-card">
+                  <VoiceChat
+                    phone={phoneNumber}
+                    language={language}
+                    onClose={() => setIsVoiceActive(false)}
+                  />
+                </div>
+              )}
+
               <div className="border-t border-border px-3 py-2.5 bg-card">
                 <div className="flex gap-2 items-center max-w-lg mx-auto">
                   <Input
@@ -634,10 +646,19 @@ export default function Home() {
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
                     placeholder={getLabel("typeMessage")}
                     className="flex-1"
-                    disabled={isTyping || chatPhase === "awaiting_plan_language"}
+                    disabled={isTyping || chatPhase === "awaiting_plan_language" || isVoiceActive}
                     data-testid="input-chat"
                   />
-                  <Button size="icon" onClick={sendMessage} disabled={!chatInput.trim() || isTyping || chatPhase === "awaiting_plan_language"} data-testid="button-send-chat">
+                  <Button
+                    size="icon"
+                    variant={isVoiceActive ? "default" : "outline"}
+                    onClick={() => setIsVoiceActive(!isVoiceActive)}
+                    disabled={isTyping}
+                    data-testid="button-voice-call"
+                  >
+                    <Mic className="w-4 h-4" />
+                  </Button>
+                  <Button size="icon" onClick={sendMessage} disabled={!chatInput.trim() || isTyping || chatPhase === "awaiting_plan_language" || isVoiceActive} data-testid="button-send-chat">
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>

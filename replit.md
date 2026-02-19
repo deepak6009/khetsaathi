@@ -53,9 +53,19 @@ Agricultural AI assistant where farmers upload crop images and receive disease d
 - **usercases** (region: ap-south-1): PK=phone, SK=timestamp, Attributes: conversationSummary, diagnosis, treatmentPlan, language, imageUrls
 - **chatsummary** (region: ap-south-1): PK=phone, SK=timestamp, Attributes: conversationSummary, pdfUrl, language, diagnosis, imageUrls
 
+## Voice Integration (LiveKit)
+- **LiveKit Agent**: `server/livekit-agent.ts` - Standalone voice agent using Gemini Realtime API
+- **Frontend Component**: `client/src/components/voice-chat.tsx` - LiveKit room with voice UI, visualizer, mute/end controls
+- **Token Endpoint**: `POST /api/livekit/token` - Generates LiveKit access tokens for farmers
+- **Voice Model**: Gemini 2.0 Flash Exp via `@livekit/agents-plugin-google` realtime, voice "Kore"
+- **VAD**: Silero VAD for voice activity detection with interruption support
+- **Agent runs as separate process**: `npx tsx server/livekit-agent.ts dev` (not part of main Express server)
+- **Voice UI**: Mic button in chat input area toggles voice panel with BarVisualizer, mute, and end call buttons
+
 ## Environment Variables (Secrets)
 - AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET_NAME, CLOUDFRONT_URL
 - GEMINI_API_KEY
+- LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL
 - SESSION_SECRET
 - DATABASE_URL (auto-configured, PostgreSQL)
 
