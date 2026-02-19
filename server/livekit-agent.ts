@@ -134,9 +134,13 @@ export default defineAgent({
 
       log('Agent created with pipeline components');
 
-      const vadModel = silero.VAD.load();
+      const vadModel = silero.VAD.load({
+        activationThreshold: 0.3,
+        minSpeechDuration: 30,
+        minSilenceDuration: 800,
+      });
 
-      log('VAD (Silero) loaded for speech detection');
+      log('VAD (Silero) loaded with low threshold for better sensitivity');
 
       const session = new voice.AgentSession({
         vad: await vadModel,

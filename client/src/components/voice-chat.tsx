@@ -6,10 +6,11 @@ import {
   useVoiceAssistant,
   BarVisualizer,
   useLocalParticipant,
+  useRoomContext,
 } from "@livekit/components-react";
 import "@livekit/components-styles";
-import { ConnectionState } from "livekit-client";
-import { Mic, MicOff, PhoneOff } from "lucide-react";
+import { ConnectionState, RoomEvent } from "livekit-client";
+import { Mic, MicOff, PhoneOff, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface VoiceChatProps {
@@ -22,10 +23,33 @@ function VoiceUI({ onClose }: { onClose: () => void }) {
   const connectionState = useConnectionState();
   const { state: agentState, audioTrack } = useVoiceAssistant();
   const { localParticipant } = useLocalParticipant();
+  const room = useRoomContext();
   const [isMuted, setIsMuted] = useState(false);
+  const [debugInfo, setDebugInfo] = useState('');
 
   const isConnected = connectionState === ConnectionState.Connected;
   const isConnecting = connectionState === ConnectionState.Connecting;
+
+  useEffect(() => {
+    if (!room) return;
+
+    const handleTrackSubscribed = (track: any, pub: any, participant: any) => {
+      console.log(`[voice] Track subscribed: ${participant.identity}, kind=${track.kind}, sid=${pub.trackSid}`);
+      setDebugInfo(`Agent audio connected`);
+    };
+
+    const handleTrackUnsubscribed = (track: any, pub: any, participant: any) => {
+      console.log(`[voice] Track unsubscribed: ${participant.identity}`);
+    };
+
+    room.on(RoomEvent.TrackSubscribed, handleTrackSubscribed);
+    room.on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed);
+
+    return () => {
+      room.off(RoomEvent.TrackSubscribed, handleTrackSubscribed);
+      room.off(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed);
+    };
+  }, [room]);
 
   const getStatusText = () => {
     if (isConnecting) return "Connecting...";
@@ -48,8 +72,26 @@ function VoiceUI({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const isInIframe = window.self !== window.top;
+
   return (
     <div className="flex flex-col items-center gap-4 py-6 px-4">
+      {isInIframe && (
+        <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 rounded-md" data-testid="text-iframe-warning">
+          <ExternalLink className="w-3 h-3 flex-shrink-0" />
+          <span>For best voice experience, open in a new tab</span>
+          <a
+            href={window.location.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline font-medium"
+            data-testid="link-open-new-tab"
+          >
+            Open
+          </a>
+        </div>
+      )}
+
       <div className="w-full max-w-[200px] h-[80px] flex items-center justify-center">
         {audioTrack ? (
           <BarVisualizer
@@ -74,6 +116,10 @@ function VoiceUI({ onClose }: { onClose: () => void }) {
       <p className={`text-sm font-medium ${getStatusColor()}`} data-testid="text-voice-status">
         {getStatusText()}
       </p>
+
+      {debugInfo && (
+        <p className="text-xs text-muted-foreground" data-testid="text-voice-debug">{debugInfo}</p>
+      )}
 
       <div className="flex gap-3 items-center">
         <Button
