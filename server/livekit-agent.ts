@@ -135,12 +135,12 @@ export default defineAgent({
       log('Agent created with pipeline components');
 
       const vadModel = silero.VAD.load({
-        activationThreshold: 0.3,
-        minSpeechDuration: 30,
-        minSilenceDuration: 800,
+        activationThreshold: 0.85,
+        minSpeechDuration: 300,
+        minSilenceDuration: 1200,
       });
 
-      log('VAD (Silero) loaded with low threshold for better sensitivity');
+      log('VAD (Silero) loaded with noise-resistant settings');
 
       const session = new voice.AgentSession({
         vad: await vadModel,
@@ -150,8 +150,12 @@ export default defineAgent({
       });
 
       session.on('user_input_transcribed' as any, (ev: any) => {
-        if (ev.transcript && ev.isFinal) {
-          log(`Farmer said: ${ev.transcript}`);
+        if (ev.transcript) {
+          if (ev.isFinal) {
+            log(`[FINAL] Farmer said: "${ev.transcript}"`);
+          } else {
+            log(`[PARTIAL] Hearing: "${ev.transcript}"`);
+          }
         }
       });
 
