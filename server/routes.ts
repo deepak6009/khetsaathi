@@ -11,7 +11,7 @@ import { uploadPdfToS3 } from "./services/s3Service";
 import { phoneSchema, languageSchema } from "@shared/schema";
 import { z } from "zod";
 import { log } from "./index";
-import { AccessToken, RoomServiceClient } from "livekit-server-sdk";
+import { AccessToken, RoomServiceClient, AgentDispatchClient } from "livekit-server-sdk";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -398,8 +398,12 @@ export async function registerRoutes(
         name: roomName,
         metadata: roomMetadata,
         emptyTimeout: 300,
-        maxParticipants: 2,
+        maxParticipants: 3,
       });
+
+      const agentDispatch = new AgentDispatchClient(livekitUrl, apiKey, apiSecret);
+      await agentDispatch.createDispatch(roomName, "");
+      log(`Agent dispatched to room: ${roomName}`);
 
       const token = new AccessToken(apiKey, apiSecret, {
         identity: participantIdentity,

@@ -200,7 +200,7 @@ class KhetSaathiAgent(Agent):
                             diagnosis_agent.message_count = self.message_count
                             diagnosis_agent._conversation_history = self._conversation_history
                             Agent.__init__(diagnosis_agent, instructions=new_instructions)
-                            await self.session.update_agent(diagnosis_agent)
+                            self.session.update_agent(diagnosis_agent)
                             logger.info("Agent swapped with diagnosis instructions")
         except Exception as e:
             logger.error(f"Diagnosis error: {e}")

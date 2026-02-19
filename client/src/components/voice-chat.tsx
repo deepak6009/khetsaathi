@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Mic, MicOff, PhoneOff } from "lucide-react";
+import { Mic, MicOff, PhoneOff, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   LiveKitRoom,
@@ -100,9 +100,23 @@ export default function VoiceChat({ phone, language, imageUrls, onClose }: Voice
     url: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [micReady, setMicReady] = useState(false);
 
   useEffect(() => {
-    async function fetchToken() {
+    async function initVoice() {
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        setMicReady(true);
+      } catch (micErr: any) {
+        const micMessage = language === "Telugu"
+          ? "మైక్రోఫోన్ అనుమతి అవసరం. దయచేసి బ్రౌజర్ సెట్టింగ్స్‌లో మైక్రోఫోన్ అనుమతించండి."
+          : language === "Hindi"
+          ? "माइक्रोफ़ोन की अनुमति आवश्यक है। कृपया ब्राउज़र सेटिंग्स में माइक्रोफ़ोन की अनुमति दें।"
+          : "Microphone permission is required. Please allow microphone access in your browser settings.";
+        setError(micMessage);
+        return;
+      }
+
       try {
         const resp = await fetch("/api/livekit/token", {
           method: "POST",
@@ -119,16 +133,21 @@ export default function VoiceChat({ phone, language, imageUrls, onClose }: Voice
         setError(err.message || "Connection failed");
       }
     }
-    fetchToken();
+    initVoice();
   }, [phone, language, imageUrls]);
 
   const handleDisconnect = useCallback(() => {
     onClose();
   }, [onClose]);
 
+  const handleError = useCallback((err: Error) => {
+    console.error("LiveKit room error:", err);
+  }, []);
+
   if (error) {
     return (
       <div className="flex flex-col items-center gap-4 py-6 px-4" data-testid="voice-chat-panel">
+        <AlertTriangle className="w-8 h-8 text-yellow-500" />
         <p className="text-sm text-destructive text-center" data-testid="text-voice-error">{error}</p>
         <Button variant="outline" onClick={onClose} data-testid="button-close-error">
           {language === "Telugu" ? "మూసివేయి" : language === "Hindi" ? "बंद करें" : "Close"}
@@ -137,7 +156,7 @@ export default function VoiceChat({ phone, language, imageUrls, onClose }: Voice
     );
   }
 
-  if (!connectionDetails) {
+  if (!connectionDetails || !micReady) {
     return (
       <div className="flex flex-col items-center gap-4 py-6 px-4" data-testid="voice-chat-panel">
         <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -156,6 +175,7 @@ export default function VoiceChat({ phone, language, imageUrls, onClose }: Voice
       audio={true}
       video={false}
       onDisconnected={handleDisconnect}
+      onError={handleError}
     >
       <VoiceAssistantUI language={language} onClose={handleDisconnect} />
       <RoomAudioRenderer />
