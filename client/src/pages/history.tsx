@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, FileText, Calendar, Bug, Sprout, Download } from "lucide-react";
+import { ChevronLeft, FileText, CalendarDays, Sprout, Download, Leaf, Loader2 } from "lucide-react";
 import type { Language } from "@shared/schema";
 import logoImage from "@assets/Blue_and_Green_Farmers_Instagram_Post_(2)_1771525392133.png";
 
@@ -54,85 +52,73 @@ export default function HistoryPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="bg-primary text-primary-foreground sticky top-0 z-50">
-        <div className="max-w-lg mx-auto px-3 py-2.5 sm:px-4">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate("/")}
-              className="flex items-center gap-1 text-primary-foreground/80 text-sm active:bg-white/10 rounded-md px-1 py-1"
-              data-testid="button-back"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-xs font-medium">{getLabel("back")}</span>
-            </button>
-            <img
-              src={logoImage}
-              alt="KhetSathi"
-              className="w-9 h-9 rounded-md object-contain bg-white/10 p-0.5"
-            />
-            <div className="min-w-0">
-              <h1 className="text-base font-bold tracking-tight leading-tight">{getLabel("appTitle")}</h1>
-              <p className="text-[10px] text-primary-foreground/70 leading-tight">{getLabel("title")}</p>
-            </div>
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/60">
+        <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
+          <button
+            onClick={() => navigate("/")}
+            className="flex items-center gap-1 text-muted-foreground text-sm active:opacity-70 rounded-lg px-1 py-1"
+            data-testid="button-back"
+          >
+            <ChevronLeft className="w-5 h-5" />
+            <span className="text-xs font-medium">{getLabel("back")}</span>
+          </button>
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+            <img src={logoImage} alt="KhetSathi" className="w-8 h-8 rounded-lg object-contain" />
           </div>
+          <div />
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto w-full px-3 py-4 sm:px-4">
+      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-5">
+        <div className="mb-5">
+          <h1 className="text-lg font-semibold text-foreground tracking-tight">{getLabel("title")}</h1>
+        </div>
+
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <Loader2 className="w-5 h-5 text-primary animate-spin" />
             <p className="text-sm text-muted-foreground">{getLabel("loading")}</p>
           </div>
         ) : items.length === 0 ? (
-          <div className="py-12 text-center">
-            <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-7 h-7 text-muted-foreground" />
-            </div>
-            <p className="font-medium text-foreground text-sm mb-1">{getLabel("noHistory")}</p>
-            <p className="text-xs text-muted-foreground">{getLabel("noHistoryHint")}</p>
+          <div className="text-center py-14 rounded-xl bg-card shadow-xs">
+            <Leaf className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2.5" />
+            <p className="text-sm font-medium text-muted-foreground">{getLabel("noHistory")}</p>
+            <p className="text-xs text-muted-foreground/60 mt-0.5">{getLabel("noHistoryHint")}</p>
           </div>
         ) : (
           <div className="space-y-2.5">
             {items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((item, idx) => (
-              <Card key={idx} className="p-3" data-testid={`card-history-${idx}`}>
-                <div className="flex items-start gap-2.5">
+              <div key={idx} className="rounded-xl bg-card shadow-xs p-3.5" data-testid={`card-history-${idx}`}>
+                <div className="flex items-start gap-3">
                   {item.imageUrls && item.imageUrls.length > 0 ? (
-                    <img src={item.imageUrls[0]} alt="Crop" className="w-14 h-14 rounded-md object-cover flex-shrink-0 border border-border" />
+                    <img src={item.imageUrls[0]} alt="Crop" className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
                   ) : (
-                    <div className="w-14 h-14 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                    <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
                       <Sprout className="w-5 h-5 text-muted-foreground" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                      {item.diagnosis?.disease && (
-                        <div className="flex items-center gap-1 min-w-0">
-                          <Bug className="w-3 h-3 text-destructive flex-shrink-0" />
-                          <span className="text-[13px] font-semibold text-foreground truncate">{item.diagnosis.disease}</span>
-                        </div>
-                      )}
-                      {item.diagnosis?.severity && (
-                        <Badge variant="secondary" className="text-[9px] px-1.5">{item.diagnosis.severity}</Badge>
-                      )}
-                    </div>
-                    {item.diagnosis?.crop_identified && (
-                      <p className="text-[11px] text-muted-foreground mb-0.5">
-                        <Sprout className="w-2.5 h-2.5 inline mr-0.5" />{item.diagnosis.crop_identified}
-                      </p>
+                    {item.diagnosis?.disease && (
+                      <p className="text-[13px] font-semibold text-foreground truncate">{item.diagnosis.disease}</p>
                     )}
-                    <p className="text-[10px] text-muted-foreground">
-                      <Calendar className="w-2.5 h-2.5 inline mr-0.5" />
+                    {item.diagnosis?.crop_identified && (
+                      <p className="text-xs text-muted-foreground truncate">{item.diagnosis.crop_identified}</p>
+                    )}
+                    <p className="text-[11px] text-muted-foreground/70 mt-1 flex items-center gap-1">
+                      <CalendarDays className="w-3 h-3" />
                       {new Date(item.timestamp).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
                   </div>
+                  {item.diagnosis?.severity && (
+                    <Badge variant="secondary" className="text-[10px] font-medium rounded-full px-2">{item.diagnosis.severity}</Badge>
+                  )}
                 </div>
                 {item.pdfUrl && item.pdfUrl !== "pdf_generation_failed" && (
                   <a
                     href={item.pdfUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-2 pt-2 border-t border-border flex items-center gap-2 text-xs font-medium text-primary"
+                    className="mt-3 pt-2.5 border-t border-border/60 flex items-center gap-2 text-xs font-medium text-primary"
                     data-testid={`link-plan-pdf-${idx}`}
                   >
                     <FileText className="w-3.5 h-3.5" />
@@ -140,11 +126,11 @@ export default function HistoryPage() {
                     <Download className="w-3 h-3 ml-auto" />
                   </a>
                 )}
-              </Card>
+              </div>
             ))}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

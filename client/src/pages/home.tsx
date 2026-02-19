@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Upload, X, Camera, Phone as PhoneIcon, Globe, ArrowRight,
+  X, Camera, Phone as PhoneIcon, ArrowRight,
   Check, Send, Bot, Languages, FileText, Download, Mic, MapPin,
-  History, RotateCcw, ChevronLeft, Plus, Leaf, Clock,
+  RotateCcw, ChevronLeft, Plus, Leaf, Clock,
   ScanLine, CalendarDays, Sprout, ChevronRight, Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -76,16 +76,27 @@ const labels = {
   viewAll: { English: "View All", Telugu: "అన్ని చూడండి", Hindi: "सभी देखें" } as Record<Language, string>,
   noDiagnoses: { English: "No diagnoses yet", Telugu: "ఇంకా రోగ నిర్ధారణలు లేవు", Hindi: "अभी तक कोई निदान नहीं" } as Record<Language, string>,
   noDiagnosesHint: { English: "Scan your first crop to get started", Telugu: "ప్రారంభించడానికి మీ మొదటి పంటను స్కాన్ చేయండి", Hindi: "शुरू करने के लिए अपनी पहली फसल स्कैन करें" } as Record<Language, string>,
-  quickActions: { English: "Quick Actions", Telugu: "త్వరిత చర్యలు", Hindi: "त्वरित कार्य" } as Record<Language, string>,
   newScan: { English: "New Scan", Telugu: "కొత్త స్కాన్", Hindi: "नई स्कैन" } as Record<Language, string>,
   myHistory: { English: "My History", Telugu: "నా చరిత్ర", Hindi: "मेरा इतिहास" } as Record<Language, string>,
-  welcome: { English: "Welcome back!", Telugu: "తిరిగి స్వాగతం!", Hindi: "वापस स्वागत है!" } as Record<Language, string>,
-  welcomeNew: { English: "Welcome to KhetSathi!", Telugu: "ఖేత్‌సాథికి స్వాగతం!", Hindi: "खेतसाथी में आपका स्वागत!" } as Record<Language, string>,
   tapToCapture: { English: "Tap to capture photos", Telugu: "ఫోటోలు తీయడానికి నొక్కండి", Hindi: "फोटो लेने के लिए टैप करें" } as Record<Language, string>,
   photosSelected: { English: "photos selected", Telugu: "ఫోటోలు ఎంచుకోబడ్డాయి", Hindi: "फोटो चयनित" } as Record<Language, string>,
-  getStarted: { English: "Get Started", Telugu: "ప్రారంభించండి", Hindi: "शुरू करें" } as Record<Language, string>,
   footer: { English: "Built for Farmers", Telugu: "రైతుల కోసం", Hindi: "किसानों के लिए" } as Record<Language, string>,
 };
+
+function MinimalHeader({ logo, centered, children }: { logo?: boolean; centered?: boolean; children?: React.ReactNode }) {
+  return (
+    <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/60">
+      <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
+        {children}
+        {centered && logo && (
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+            <img src={logoImage} alt="KhetSathi" className="w-8 h-8 rounded-lg object-contain" data-testid="img-logo" />
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}
 
 export default function Home() {
   const { toast } = useToast();
@@ -397,8 +408,7 @@ export default function Home() {
     triggerPlanGeneration(messages, selectedLang);
   };
 
-  const goToDashboard = () => {
-    setScreen("dashboard");
+  const resetChatState = () => {
     setSelectedFiles([]);
     setPreviews([]);
     setImageUrls([]);
@@ -413,24 +423,16 @@ export default function Home() {
     setPdfUrl(null);
     setDiagnosisInProgress(false);
     setIsVoiceActive(false);
+  };
+
+  const goToDashboard = () => {
+    setScreen("dashboard");
+    resetChatState();
     fetchRecentHistory(phoneNumber);
   };
 
   const goToCapture = () => {
-    setSelectedFiles([]);
-    setPreviews([]);
-    setImageUrls([]);
-    setMessages([]);
-    setChatInput("");
-    setChatPhase("gathering");
-    setExtractedCrop(null);
-    setExtractedLocation(null);
-    setDiagnosis(null);
-    setTreatmentPlan(null);
-    setPlanLanguage(null);
-    setPdfUrl(null);
-    setDiagnosisInProgress(false);
-    setIsVoiceActive(false);
+    resetChatState();
     setScreen("capture");
   };
 
@@ -438,40 +440,31 @@ export default function Home() {
 
   const onboardingSteps: OnboardingStep[] = ["language", "phone", "welcome"];
   const currentOnboardingIdx = onboardingSteps.indexOf(onboardingStep);
-  const stepLabelKeys: Record<OnboardingStep, keyof typeof labels> = { language: "stepLanguage", phone: "stepPhone", welcome: "stepWelcome" };
 
   if (screen === "onboarding") {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <header className="bg-primary text-primary-foreground sticky top-0 z-50">
-          <div className="max-w-lg mx-auto px-3 py-2.5">
-            <div className="flex items-center gap-2">
-              {onboardingStep !== "language" && (
-                <button
-                  onClick={() => {
-                    const idx = onboardingSteps.indexOf(onboardingStep);
-                    if (idx > 0) setOnboardingStep(onboardingSteps[idx - 1]);
-                  }}
-                  className="flex items-center gap-1 text-primary-foreground/80 text-sm active:bg-white/10 rounded-md px-1 py-1"
-                  data-testid="button-back-header"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                  <span className="text-xs font-medium">{getLabel("back")}</span>
-                </button>
-              )}
-              <img src={logoImage} alt="KhetSathi" className="w-9 h-9 rounded-md object-contain bg-white/10 p-0.5" data-testid="img-logo" />
-              <div className="min-w-0">
-                <h1 className="text-base font-bold tracking-tight leading-tight" data-testid="text-app-title">{getLabel("title")}</h1>
-                <p className="text-[10px] text-primary-foreground/70 leading-tight">{getLabel("subtitle")}</p>
-              </div>
-            </div>
-          </div>
-        </header>
+        <MinimalHeader logo centered>
+          {onboardingStep !== "language" ? (
+            <button
+              onClick={() => {
+                const idx = onboardingSteps.indexOf(onboardingStep);
+                if (idx > 0) setOnboardingStep(onboardingSteps[idx - 1]);
+              }}
+              className="flex items-center gap-1 text-muted-foreground text-sm active:opacity-70 rounded-lg px-1 py-1"
+              data-testid="button-back-header"
+            >
+              <ChevronLeft className="w-5 h-5" />
+              <span className="text-xs font-medium">{getLabel("back")}</span>
+            </button>
+          ) : <div />}
+          <div />
+        </MinimalHeader>
 
-        <div className="bg-card border-b border-border sticky top-[52px] z-40">
-          <div className="max-w-lg mx-auto px-3 py-2">
+        {onboardingStep !== "welcome" && (
+          <div className="max-w-lg mx-auto w-full px-5 pt-4">
             <div className="flex items-center gap-0">
-              {onboardingSteps.map((step, idx) => {
+              {onboardingSteps.filter(s => s !== "welcome").map((step, idx) => {
                 const isActive = idx === currentOnboardingIdx;
                 const isDone = idx < currentOnboardingIdx;
                 return (
@@ -483,55 +476,55 @@ export default function Home() {
                       className="flex items-center gap-1.5 flex-shrink-0"
                       data-testid={`step-indicator-${step}`}
                     >
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 transition-all ${
-                        isDone ? "bg-primary text-primary-foreground cursor-pointer"
-                          : isActive ? "bg-primary text-primary-foreground ring-2 ring-primary/30 ring-offset-1 ring-offset-card"
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold flex-shrink-0 transition-all ${
+                        isDone ? "bg-primary text-primary-foreground"
+                          : isActive ? "bg-primary text-primary-foreground ring-2 ring-primary/20 ring-offset-2 ring-offset-background"
                           : "bg-muted text-muted-foreground"
                       }`}>
                         {isDone ? <Check className="w-3.5 h-3.5" /> : idx + 1}
                       </div>
-                      <span className={`text-xs font-medium hidden min-[360px]:inline ${isActive || isDone ? "text-foreground" : "text-muted-foreground"}`}>
-                        {getLabel(stepLabelKeys[step])}
+                      <span className={`text-xs font-medium ${isActive || isDone ? "text-foreground" : "text-muted-foreground"}`}>
+                        {getLabel(step === "language" ? "stepLanguage" : "stepPhone")}
                       </span>
                     </button>
-                    {idx < onboardingSteps.length - 1 && (
-                      <div className={`flex-1 h-[2px] mx-2 rounded-full transition-colors ${idx < currentOnboardingIdx ? "bg-primary" : "bg-muted"}`} />
+                    {idx < 1 && (
+                      <div className={`flex-1 h-[2px] mx-3 rounded-full transition-colors ${idx < currentOnboardingIdx ? "bg-primary" : "bg-border"}`} />
                     )}
                   </div>
                 );
               })}
             </div>
           </div>
-        </div>
+        )}
 
-        <main className="flex-1 max-w-lg mx-auto w-full px-3 py-4">
+        <main className="flex-1 max-w-lg mx-auto w-full px-5 py-6">
           <AnimatePresence mode="wait">
             {onboardingStep === "language" && (
-              <motion.div key="lang" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-                <div className="space-y-4">
-                  <div className="text-center mb-1">
-                    <h2 className="text-lg font-semibold">{getLabel("chooseLanguage")}</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">{getLabel("languageHint")}</p>
+              <motion.div key="lang" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.2 }}>
+                <div className="space-y-5">
+                  <div className="text-center space-y-1">
+                    <h2 className="text-xl font-semibold text-foreground tracking-tight">{getLabel("chooseLanguage")}</h2>
+                    <p className="text-sm text-muted-foreground">{getLabel("languageHint")}</p>
                   </div>
                   <div className="space-y-2.5">
                     {(["English", "Telugu", "Hindi"] as Language[]).map((lang) => (
                       <button key={lang} onClick={() => setLanguage(lang)}
-                        className={`w-full px-4 py-3.5 rounded-md border-2 text-left flex items-center gap-3 transition-colors active:scale-[0.98] ${
-                          language === lang ? "border-primary bg-primary/5" : "border-border"
+                        className={`w-full px-4 py-4 rounded-xl text-left flex items-center gap-3.5 transition-all active:scale-[0.98] ${
+                          language === lang ? "bg-card border-2 border-primary shadow-sm" : "bg-card border-2 border-transparent shadow-xs hover:shadow-sm"
                         }`} data-testid={`button-lang-${lang.toLowerCase()}`}>
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                          language === lang ? "border-primary bg-primary" : "border-muted-foreground/50"
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                          language === lang ? "border-primary bg-primary" : "border-input"
                         }`}>
                           {language === lang && <Check className="w-3 h-3 text-primary-foreground" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-foreground text-[15px] leading-tight">{lang === "Telugu" ? "తెలుగు" : lang === "Hindi" ? "हिन्दी" : "English"}</p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">{lang}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{lang}</p>
                         </div>
                       </button>
                     ))}
                   </div>
-                  <Button className="w-full gap-2 h-12" size="lg" onClick={() => setOnboardingStep("phone")} data-testid="button-continue-language">
+                  <Button className="w-full gap-2 h-12 rounded-xl text-[15px] font-semibold shadow-sm" size="lg" onClick={() => setOnboardingStep("phone")} data-testid="button-continue-language">
                     {getLabel("continueBtn")}<ArrowRight className="w-4 h-4" />
                   </Button>
                 </div>
@@ -539,23 +532,25 @@ export default function Home() {
             )}
 
             {onboardingStep === "phone" && (
-              <motion.div key="phone" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-                <div className="space-y-4">
-                  <div className="text-center">
-                    <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+              <motion.div key="phone" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.2 }}>
+                <div className="space-y-5">
+                  <div className="text-center space-y-3">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/8 flex items-center justify-center mx-auto">
                       <PhoneIcon className="w-7 h-7 text-primary" />
                     </div>
-                    <h2 className="text-lg font-semibold">{getLabel("enterPhone")}</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">{getLabel("phoneHint")}</p>
+                    <div className="space-y-1">
+                      <h2 className="text-xl font-semibold text-foreground tracking-tight">{getLabel("enterPhone")}</h2>
+                      <p className="text-sm text-muted-foreground">{getLabel("phoneHint")}</p>
+                    </div>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <div>
-                      <label htmlFor="phone" className="text-sm font-medium mb-1.5 block text-foreground">{getLabel("phoneLabel")}</label>
+                      <label htmlFor="phone" className="text-sm font-medium mb-2 block text-foreground">{getLabel("phoneLabel")}</label>
                       <Input id="phone" type="tel" placeholder="+91 98765 43210" value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9+]/g, ""))}
-                        className="text-lg text-center tracking-wider h-12" data-testid="input-phone" />
+                        className="text-lg text-center tracking-wider h-13 rounded-xl bg-card border-border/80 shadow-xs" data-testid="input-phone" />
                     </div>
-                    <Button className="w-full gap-2 h-12" size="lg" onClick={() => registerPhoneMutation.mutate()}
+                    <Button className="w-full gap-2 h-12 rounded-xl text-[15px] font-semibold shadow-sm" size="lg" onClick={() => registerPhoneMutation.mutate()}
                       disabled={phoneNumber.length < 10 || registerPhoneMutation.isPending} data-testid="button-continue-phone">
                       {registerPhoneMutation.isPending ? (
                         <><Loader2 className="w-4 h-4 animate-spin" />{getLabel("registering")}</>
@@ -569,36 +564,30 @@ export default function Home() {
             )}
 
             {onboardingStep === "welcome" && (
-              <motion.div key="welcome" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-                <div className="flex flex-col items-center text-center py-6 space-y-5">
-                  <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Leaf className="w-12 h-12 text-primary" />
+              <motion.div key="welcome" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }}>
+                <div className="flex flex-col items-center text-center space-y-6">
+                  <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-md">
+                    <img src={logoImage} alt="KhetSathi" className="w-full h-full object-contain bg-white p-1" />
                   </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-foreground">{getLabel("welcomeTitle")}</h2>
-                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed max-w-xs mx-auto">{getLabel("welcomeDesc")}</p>
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-bold text-foreground tracking-tight">{getLabel("welcomeTitle")}</h2>
+                    <p className="text-sm text-muted-foreground leading-relaxed max-w-[280px] mx-auto">{getLabel("welcomeDesc")}</p>
                   </div>
-                  <div className="w-full space-y-2.5 text-left">
-                    <div className="flex items-center gap-3 px-4 py-3 rounded-md bg-primary/5 border border-primary/10">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <ScanLine className="w-4 h-4 text-primary" />
+                  <div className="w-full space-y-2.5">
+                    {[
+                      { icon: ScanLine, label: "welcomeFeature1" as const },
+                      { icon: CalendarDays, label: "welcomeFeature2" as const },
+                      { icon: Clock, label: "welcomeFeature3" as const },
+                    ].map(({ icon: Icon, label }) => (
+                      <div key={label} className="flex items-center gap-3.5 px-4 py-3.5 rounded-xl bg-card shadow-xs">
+                        <div className="w-9 h-9 rounded-lg bg-primary/8 flex items-center justify-center flex-shrink-0">
+                          <Icon className="w-[18px] h-[18px] text-primary" />
+                        </div>
+                        <span className="text-sm font-medium text-foreground text-left">{getLabel(label)}</span>
                       </div>
-                      <span className="text-sm font-medium text-foreground">{getLabel("welcomeFeature1")}</span>
-                    </div>
-                    <div className="flex items-center gap-3 px-4 py-3 rounded-md bg-primary/5 border border-primary/10">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <CalendarDays className="w-4 h-4 text-primary" />
-                      </div>
-                      <span className="text-sm font-medium text-foreground">{getLabel("welcomeFeature2")}</span>
-                    </div>
-                    <div className="flex items-center gap-3 px-4 py-3 rounded-md bg-primary/5 border border-primary/10">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Clock className="w-4 h-4 text-primary" />
-                      </div>
-                      <span className="text-sm font-medium text-foreground">{getLabel("welcomeFeature3")}</span>
-                    </div>
+                    ))}
                   </div>
-                  <Button className="w-full gap-2 h-12" size="lg" onClick={() => { setScreen("dashboard"); fetchRecentHistory(phoneNumber); }} data-testid="button-start-now">
+                  <Button className="w-full gap-2 h-13 rounded-xl text-[15px] font-semibold shadow-md" size="lg" onClick={() => { setScreen("dashboard"); fetchRecentHistory(phoneNumber); }} data-testid="button-start-now">
                     {getLabel("startNow")} <ArrowRight className="w-4 h-4" />
                   </Button>
                 </div>
@@ -607,9 +596,9 @@ export default function Home() {
           </AnimatePresence>
         </main>
 
-        <footer className="border-t border-border mt-auto">
-          <div className="max-w-lg mx-auto px-4 py-2.5 text-center text-[11px] text-muted-foreground">
-            {getLabel("title")} &mdash; {getLabel("footer")}
+        <footer className="mt-auto">
+          <div className="max-w-lg mx-auto px-4 py-3 text-center text-xs text-muted-foreground/60">
+            {getLabel("title")} &middot; {getLabel("footer")}
           </div>
         </footer>
       </div>
@@ -619,100 +608,94 @@ export default function Home() {
   if (screen === "dashboard") {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <header className="bg-primary text-primary-foreground sticky top-0 z-50">
-          <div className="max-w-lg mx-auto px-3 py-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <img src={logoImage} alt="KhetSathi" className="w-9 h-9 rounded-md object-contain bg-white/10 p-0.5" />
-                <div className="min-w-0">
-                  <h1 className="text-base font-bold tracking-tight leading-tight">{getLabel("title")}</h1>
-                  <p className="text-[10px] text-primary-foreground/70 leading-tight">{getLabel("subtitle")}</p>
-                </div>
-              </div>
-              {userLocation && (
-                <div className="flex items-center gap-1 text-primary-foreground/70 text-[10px]">
-                  <MapPin className="w-3 h-3" />
-                  <span className="max-w-[100px] truncate">{userLocation}</span>
-                </div>
-              )}
-            </div>
+        <MinimalHeader logo centered>
+          <div className="flex items-center gap-1 text-muted-foreground">
+            {userLocation && (
+              <span className="text-[11px] flex items-center gap-1 bg-muted/60 px-2 py-1 rounded-full">
+                <MapPin className="w-3 h-3 text-primary" />
+                <span className="max-w-[80px] truncate">{userLocation}</span>
+              </span>
+            )}
           </div>
-        </header>
+          <div />
+        </MinimalHeader>
 
-        <main className="flex-1 max-w-lg mx-auto w-full px-3 py-4 space-y-5">
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-            <p className="text-sm text-muted-foreground mb-1">{getLabel("welcomeNew")}</p>
-
+        <main className="flex-1 max-w-lg mx-auto w-full px-4 py-5 space-y-5">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
             <button
               onClick={goToCapture}
-              className="w-full rounded-md bg-primary text-primary-foreground p-5 flex flex-col items-center gap-3 active:scale-[0.98] transition-transform"
+              className="w-full rounded-2xl overflow-hidden shadow-md active:scale-[0.98] transition-transform"
               data-testid="button-scan-crop"
+              style={{ background: "linear-gradient(135deg, hsl(152 45% 28%), hsl(152 35% 22%))" }}
             >
-              <div className="w-16 h-16 rounded-full bg-white/15 flex items-center justify-center">
-                <Camera className="w-8 h-8" />
-              </div>
-              <div className="text-center">
-                <p className="text-lg font-bold">{getLabel("scanCrop")}</p>
-                <p className="text-xs text-primary-foreground/75 mt-0.5">{getLabel("scanDesc")}</p>
+              <div className="p-6 text-white flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+                  <Camera className="w-7 h-7" />
+                </div>
+                <div className="text-left flex-1">
+                  <p className="text-lg font-bold leading-tight">{getLabel("scanCrop")}</p>
+                  <p className="text-xs text-white/70 mt-1 leading-snug">{getLabel("scanDesc")}</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-white/50 flex-shrink-0" />
               </div>
             </button>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.1 }}>
-            <div className="grid grid-cols-2 gap-2.5">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.08 }}>
+            <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={goToCapture}
-                className="flex flex-col items-center gap-2 p-4 rounded-md bg-card border border-border active:scale-[0.98] transition-transform"
+                className="flex items-center gap-3 p-4 rounded-xl bg-card shadow-xs active:scale-[0.98] transition-transform"
                 data-testid="button-quick-new-scan"
               >
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-primary/8 flex items-center justify-center flex-shrink-0">
                   <ScanLine className="w-5 h-5 text-primary" />
                 </div>
-                <span className="text-xs font-medium text-foreground">{getLabel("newScan")}</span>
+                <span className="text-sm font-medium text-foreground">{getLabel("newScan")}</span>
               </button>
               <Link href={`/history?phone=${encodeURIComponent(phoneNumber)}&lang=${language}`}>
                 <button
-                  className="w-full flex flex-col items-center gap-2 p-4 rounded-md bg-card border border-border active:scale-[0.98] transition-transform"
+                  className="w-full flex items-center gap-3 p-4 rounded-xl bg-card shadow-xs active:scale-[0.98] transition-transform"
                   data-testid="button-quick-history"
                 >
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-primary/8 flex items-center justify-center flex-shrink-0">
                     <Clock className="w-5 h-5 text-primary" />
                   </div>
-                  <span className="text-xs font-medium text-foreground">{getLabel("myHistory")}</span>
+                  <span className="text-sm font-medium text-foreground">{getLabel("myHistory")}</span>
                 </button>
               </Link>
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.2 }}>
-            <div className="flex items-center justify-between gap-2 mb-2.5">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: 0.16 }}>
+            <div className="flex items-center justify-between gap-2 mb-3">
               <h3 className="text-sm font-semibold text-foreground">{getLabel("recentDiagnoses")}</h3>
               {recentHistory.length > 0 && (
                 <Link href={`/history?phone=${encodeURIComponent(phoneNumber)}&lang=${language}`}>
-                  <span className="text-xs text-primary font-medium">{getLabel("viewAll")} <ChevronRight className="w-3 h-3 inline" /></span>
+                  <span className="text-xs text-primary font-medium flex items-center gap-0.5">{getLabel("viewAll")} <ChevronRight className="w-3.5 h-3.5" /></span>
                 </Link>
               )}
             </div>
 
             {historyLoading ? (
-              <div className="flex justify-center py-8">
+              <div className="flex justify-center py-10">
                 <Loader2 className="w-5 h-5 text-primary animate-spin" />
               </div>
             ) : recentHistory.length === 0 ? (
-              <div className="text-center py-8 rounded-md border border-dashed border-border">
-                <Leaf className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
+              <div className="text-center py-10 rounded-xl bg-card shadow-xs">
+                <Leaf className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2.5" />
                 <p className="text-sm font-medium text-muted-foreground">{getLabel("noDiagnoses")}</p>
-                <p className="text-[11px] text-muted-foreground/70 mt-0.5">{getLabel("noDiagnosesHint")}</p>
+                <p className="text-xs text-muted-foreground/60 mt-0.5">{getLabel("noDiagnosesHint")}</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {recentHistory.map((item, idx) => (
-                  <Card key={idx} className="p-3" data-testid={`card-recent-${idx}`}>
-                    <div className="flex items-start gap-2.5">
+                  <div key={idx} className="rounded-xl bg-card shadow-xs p-3.5" data-testid={`card-recent-${idx}`}>
+                    <div className="flex items-start gap-3">
                       {item.imageUrls && item.imageUrls.length > 0 ? (
-                        <img src={item.imageUrls[0]} alt="Crop" className="w-12 h-12 rounded-md object-cover flex-shrink-0 border border-border" />
+                        <img src={item.imageUrls[0]} alt="Crop" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
                       ) : (
-                        <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
                           <Sprout className="w-5 h-5 text-muted-foreground" />
                         </div>
                       )}
@@ -721,27 +704,27 @@ export default function Home() {
                           <p className="text-[13px] font-semibold text-foreground truncate">{item.diagnosis.disease}</p>
                         )}
                         {item.diagnosis?.crop_identified && (
-                          <p className="text-[11px] text-muted-foreground truncate">{item.diagnosis.crop_identified}</p>
+                          <p className="text-xs text-muted-foreground truncate">{item.diagnosis.crop_identified}</p>
                         )}
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                          <CalendarDays className="w-2.5 h-2.5 inline mr-0.5" />
+                        <p className="text-[11px] text-muted-foreground/70 mt-1 flex items-center gap-1">
+                          <CalendarDays className="w-3 h-3" />
                           {new Date(item.timestamp).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                         </p>
                       </div>
                       {item.diagnosis?.severity && (
-                        <Badge variant="secondary" className="text-[9px] flex-shrink-0">{item.diagnosis.severity}</Badge>
+                        <Badge variant="secondary" className="text-[10px] font-medium rounded-full px-2">{item.diagnosis.severity}</Badge>
                       )}
                     </div>
-                  </Card>
+                  </div>
                 ))}
               </div>
             )}
           </motion.div>
         </main>
 
-        <footer className="border-t border-border mt-auto">
-          <div className="max-w-lg mx-auto px-4 py-2.5 text-center text-[11px] text-muted-foreground">
-            {getLabel("title")} &mdash; {getLabel("footer")}
+        <footer className="mt-auto">
+          <div className="max-w-lg mx-auto px-4 py-3 text-center text-xs text-muted-foreground/60">
+            {getLabel("title")} &middot; {getLabel("footer")}
           </div>
         </footer>
       </div>
@@ -751,61 +734,55 @@ export default function Home() {
   if (screen === "capture") {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <header className="bg-primary text-primary-foreground sticky top-0 z-50">
-          <div className="max-w-lg mx-auto px-3 py-2.5">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={goToDashboard}
-                className="flex items-center gap-1 text-primary-foreground/80 text-sm active:bg-white/10 rounded-md px-1 py-1"
-                data-testid="button-back-capture"
-              >
-                <ChevronLeft className="w-5 h-5" />
-                <span className="text-xs font-medium">{getLabel("back")}</span>
-              </button>
-              <img src={logoImage} alt="KhetSathi" className="w-9 h-9 rounded-md object-contain bg-white/10 p-0.5" />
-              <div className="min-w-0">
-                <h1 className="text-base font-bold tracking-tight leading-tight">{getLabel("title")}</h1>
-                <p className="text-[10px] text-primary-foreground/70 leading-tight">{getLabel("uploadPhotos")}</p>
-              </div>
-            </div>
-          </div>
-        </header>
+        <MinimalHeader logo centered>
+          <button
+            onClick={goToDashboard}
+            className="flex items-center gap-1 text-muted-foreground text-sm active:opacity-70 rounded-lg px-1 py-1"
+            data-testid="button-back-capture"
+          >
+            <ChevronLeft className="w-5 h-5" />
+            <span className="text-xs font-medium">{getLabel("back")}</span>
+          </button>
+          <div />
+        </MinimalHeader>
 
-        <main className="flex-1 max-w-lg mx-auto w-full px-3 py-4">
-          <div className="space-y-4">
-            <div className="text-center">
-              <h2 className="text-lg font-semibold">{getLabel("uploadPhotos")}</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">{getLabel("uploadHint")}</p>
+        <main className="flex-1 max-w-lg mx-auto w-full px-4 py-5">
+          <div className="space-y-5">
+            <div className="text-center space-y-1">
+              <h2 className="text-xl font-semibold text-foreground tracking-tight">{getLabel("uploadPhotos")}</h2>
+              <p className="text-sm text-muted-foreground">{getLabel("uploadHint")}</p>
             </div>
 
             {previews.length === 0 ? (
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full py-14 rounded-md border-2 border-dashed border-primary/40 flex flex-col items-center justify-center gap-3 text-primary active:scale-[0.98] active:bg-primary/5 transition-transform"
+                className="w-full py-16 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-4 active:scale-[0.98] active:bg-muted/30 transition-all"
                 data-testid="button-upload-image"
               >
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Camera className="w-8 h-8" />
+                <div className="w-16 h-16 rounded-2xl bg-primary/8 flex items-center justify-center">
+                  <Camera className="w-8 h-8 text-primary" />
                 </div>
-                <span className="text-sm font-medium">{getLabel("tapToCapture")}</span>
-                <span className="text-[11px] text-muted-foreground">1-6 photos</span>
+                <div className="text-center">
+                  <span className="text-sm font-medium text-foreground block">{getLabel("tapToCapture")}</span>
+                  <span className="text-xs text-muted-foreground mt-0.5 block">1-6 photos</span>
+                </div>
               </button>
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-medium text-foreground">{selectedFiles.length} {getLabel("photosSelected")}</span>
                   {selectedFiles.length < 6 && (
-                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} data-testid="button-add-more-images" className="gap-1">
+                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} data-testid="button-add-more-images" className="gap-1.5 rounded-lg text-xs">
                       <Plus className="w-3.5 h-3.5" />{getLabel("addMore")}
                     </Button>
                   )}
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2.5">
                   {previews.map((preview, idx) => (
-                    <div key={idx} className="relative aspect-square rounded-md overflow-hidden border border-border">
+                    <div key={idx} className="relative aspect-square rounded-xl overflow-hidden shadow-xs">
                       <img src={preview} alt={`Crop ${idx + 1}`} className="w-full h-full object-cover" data-testid={`img-preview-${idx}`} />
                       <button onClick={() => removeImage(idx)}
-                        className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center active:bg-black/80"
+                        className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm text-white flex items-center justify-center active:bg-black/70"
                         data-testid={`button-remove-image-${idx}`}>
                         <X className="w-4 h-4" />
                       </button>
@@ -817,7 +794,7 @@ export default function Home() {
 
             <input ref={fileInputRef} type="file" accept="image/*" multiple capture="environment" onChange={handleFileSelect} className="hidden" data-testid="input-file-upload" />
 
-            <Button className="w-full gap-2 h-12" size="lg" onClick={() => uploadMutation.mutate()}
+            <Button className="w-full gap-2 h-12 rounded-xl text-[15px] font-semibold shadow-sm" size="lg" onClick={() => uploadMutation.mutate()}
               disabled={selectedFiles.length === 0 || uploadMutation.isPending} data-testid="button-analyze-crop">
               {uploadMutation.isPending ? (
                 <><Loader2 className="w-4 h-4 animate-spin" />{getLabel("uploading")}</>
@@ -833,47 +810,36 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="bg-primary text-primary-foreground sticky top-0 z-50">
-        <div className="max-w-lg mx-auto px-3 py-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={goToDashboard}
-                className="flex items-center gap-1 text-primary-foreground/80 text-sm active:bg-white/10 rounded-md px-1 py-1"
-                data-testid="button-back-chat"
-              >
-                <ChevronLeft className="w-5 h-5" />
-                <span className="text-xs font-medium">{getLabel("back")}</span>
-              </button>
-              <img src={logoImage} alt="KhetSathi" className="w-9 h-9 rounded-md object-contain bg-white/10 p-0.5" />
-              <div className="min-w-0">
-                <h1 className="text-base font-bold tracking-tight leading-tight">{getLabel("title")}</h1>
-                <p className="text-[10px] text-primary-foreground/70 leading-tight">{getLabel("subtitle")}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-0.5">
-              <Button variant="ghost" size="sm" className="text-primary-foreground/80 gap-1 text-xs px-2" data-testid="button-new-diagnosis"
-                onClick={() => { goToDashboard(); setTimeout(goToCapture, 100); }}>
-                <RotateCcw className="w-3.5 h-3.5" />
-                {getLabel("newDiagnosis")}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <MinimalHeader logo centered>
+        <button
+          onClick={goToDashboard}
+          className="flex items-center gap-1 text-muted-foreground text-sm active:opacity-70 rounded-lg px-1 py-1"
+          data-testid="button-back-chat"
+        >
+          <ChevronLeft className="w-5 h-5" />
+          <span className="text-xs font-medium">{getLabel("back")}</span>
+        </button>
+        <Button variant="ghost" size="sm" className="text-muted-foreground gap-1 text-xs h-8 rounded-lg" data-testid="button-new-diagnosis"
+          onClick={() => { goToDashboard(); setTimeout(goToCapture, 100); }}>
+          <RotateCcw className="w-3.5 h-3.5" />
+          {getLabel("newDiagnosis")}
+        </Button>
+      </MinimalHeader>
 
       <main className="flex-1 flex flex-col">
-        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3" data-testid="chat-messages">
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3" data-testid="chat-messages">
           {messages.map((msg, idx) => (
-            <div key={idx} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div key={idx} className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               {msg.role === "assistant" && (
-                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                  <Bot className="w-3.5 h-3.5 text-primary" />
+                <div className="w-8 h-8 rounded-xl bg-primary/8 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Bot className="w-4 h-4 text-primary" />
                 </div>
               )}
               <div
-                className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-[14px] leading-relaxed ${
-                  msg.role === "user" ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
+                className={`max-w-[80%] rounded-2xl px-4 py-3 text-[14px] leading-relaxed shadow-xs ${
+                  msg.role === "user"
+                    ? "bg-primary text-primary-foreground rounded-br-md"
+                    : "bg-card text-foreground rounded-bl-md"
                 }`}
                 data-testid={`chat-message-${idx}`}
               >
@@ -883,56 +849,50 @@ export default function Home() {
           ))}
 
           {chatPhase === "awaiting_plan_language" && (
-            <div className="flex gap-2 justify-start">
-              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                <Languages className="w-3.5 h-3.5 text-primary" />
+            <div className="flex gap-2.5 justify-start">
+              <div className="w-8 h-8 rounded-xl bg-primary/8 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Languages className="w-4 h-4 text-primary" />
               </div>
-              <Card className="max-w-[85%] p-3" data-testid="card-plan-language-picker">
-                <p className="text-sm font-medium mb-2">{getLabel("choosePlanLanguage")}</p>
+              <div className="max-w-[85%] rounded-2xl bg-card shadow-sm p-4 rounded-bl-md" data-testid="card-plan-language-picker">
+                <p className="text-sm font-medium mb-3 text-foreground">{getLabel("choosePlanLanguage")}</p>
                 <div className="flex flex-wrap gap-2">
                   {(["English", "Telugu", "Hindi"] as Language[]).map((lang) => (
-                    <Button key={lang} variant="outline" size="sm" onClick={() => handlePlanLanguageSelect(lang)} data-testid={`button-plan-lang-${lang.toLowerCase()}`}>
+                    <Button key={lang} variant="outline" size="sm" onClick={() => handlePlanLanguageSelect(lang)} className="rounded-lg" data-testid={`button-plan-lang-${lang.toLowerCase()}`}>
                       {lang === "English" ? "English" : lang === "Telugu" ? "తెలుగు" : "हिन्दी"}
                     </Button>
                   ))}
                 </div>
-              </Card>
+              </div>
             </div>
           )}
 
           {treatmentPlan && planLanguage && (
-            <div className="flex gap-2 justify-start">
-              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                <Bot className="w-3.5 h-3.5 text-primary" />
+            <div className="flex gap-2.5 justify-start">
+              <div className="w-8 h-8 rounded-xl bg-primary/8 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Bot className="w-4 h-4 text-primary" />
               </div>
               <div className="max-w-[82%]">
                 {pdfUrl ? (
-                  <div className="bg-muted rounded-2xl rounded-bl-sm overflow-hidden cursor-pointer" onClick={() => window.open(pdfUrl, "_blank")} data-testid="card-pdf-preview">
-                    <div className="bg-primary/10 px-3 py-2.5 flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-md bg-red-500/90 flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-4 h-4 text-white" />
+                  <div className="bg-card rounded-2xl rounded-bl-md overflow-hidden shadow-sm cursor-pointer" onClick={() => window.open(pdfUrl, "_blank")} data-testid="card-pdf-preview">
+                    <div className="px-4 py-3 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-red-500/90 flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-5 h-5 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate" data-testid="text-pdf-title">
+                        <p className="text-sm font-semibold text-foreground truncate" data-testid="text-pdf-title">
                           {planLanguage === "Telugu" ? "7-రోజుల ప్రణాళిక" : planLanguage === "Hindi" ? "7-दिन की योजना" : "7-Day Treatment Plan"}
                         </p>
-                        <p className="text-[11px] text-muted-foreground">PDF</p>
+                        <p className="text-xs text-muted-foreground">PDF &middot; {planLanguage === "Telugu" ? "తెలుగు" : planLanguage === "Hindi" ? "हिन्दी" : "English"}</p>
                       </div>
-                    </div>
-                    <div className="px-3 py-2 flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-muted-foreground">
-                        {planLanguage === "Telugu" ? "తెలుగు" : planLanguage === "Hindi" ? "हिन्दी" : "English"}
-                      </span>
                       <a href={pdfUrl} download target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-primary" data-testid="button-download-pdf">
-                        <Download className="w-3.5 h-3.5" />
-                        {planLanguage === "Telugu" ? "డౌన్‌లోడ్" : planLanguage === "Hindi" ? "डाउनलोड" : "Download"}
+                        className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center" data-testid="button-download-pdf">
+                        <Download className="w-4 h-4 text-primary" />
                       </a>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-muted rounded-2xl rounded-bl-sm px-3 py-2.5" data-testid="card-plan-text-fallback">
-                    <div className="flex items-center gap-2 mb-1.5">
+                  <div className="bg-card rounded-2xl rounded-bl-md px-4 py-3 shadow-xs" data-testid="card-plan-text-fallback">
+                    <div className="flex items-center gap-2">
                       <FileText className="w-4 h-4 text-primary" />
                       <p className="text-sm font-medium text-foreground">
                         {planLanguage === "Telugu" ? "7-రోజుల ప్రణాళిక" : planLanguage === "Hindi" ? "7-दिन की योजना" : "7-Day Treatment Plan"}
@@ -941,10 +901,10 @@ export default function Home() {
                   </div>
                 )}
                 <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                  <span className="text-[11px] text-muted-foreground">{getLabel("getPlanIn")}:</span>
+                  <span className="text-xs text-muted-foreground">{getLabel("getPlanIn")}:</span>
                   {(["English", "Telugu", "Hindi"] as Language[]).filter((l) => l !== planLanguage).map((lang) => (
-                    <Button key={lang} variant="ghost" size="sm" onClick={() => regeneratePlanInLanguage(lang)} disabled={isTyping} data-testid={`button-regen-plan-${lang.toLowerCase()}`}>
-                      <Languages className="w-3.5 h-3.5 mr-1" />
+                    <Button key={lang} variant="ghost" size="sm" onClick={() => regeneratePlanInLanguage(lang)} disabled={isTyping} className="text-xs h-7 rounded-lg" data-testid={`button-regen-plan-${lang.toLowerCase()}`}>
+                      <Languages className="w-3 h-3 mr-1" />
                       {lang === "English" ? "English" : lang === "Telugu" ? "తెలుగు" : "हिन्दी"}
                     </Button>
                   ))}
@@ -954,15 +914,15 @@ export default function Home() {
           )}
 
           {isTyping && (
-            <div className="flex gap-2 justify-start">
-              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                <Bot className="w-3.5 h-3.5 text-primary" />
+            <div className="flex gap-2.5 justify-start">
+              <div className="w-8 h-8 rounded-xl bg-primary/8 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Bot className="w-4 h-4 text-primary" />
               </div>
-              <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3 text-sm">
+              <div className="bg-card rounded-2xl rounded-bl-md px-4 py-3.5 shadow-xs">
                 <div className="flex gap-1.5 items-center">
-                  <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                 </div>
               </div>
             </div>
@@ -976,7 +936,7 @@ export default function Home() {
           </div>
         )}
 
-        <div className="border-t border-border px-3 py-2 bg-card pb-[env(safe-area-inset-bottom,8px)]">
+        <div className="border-t border-border/60 px-4 py-2.5 bg-background pb-[env(safe-area-inset-bottom,8px)]">
           <div className="flex gap-2 items-center max-w-lg mx-auto">
             <Input
               ref={chatInputRef}
@@ -984,16 +944,20 @@ export default function Home() {
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
               placeholder={getLabel("typeMessage")}
-              className="flex-1 h-10"
+              className="flex-1 h-10 rounded-xl bg-card border-border/60 shadow-xs"
               disabled={isTyping || chatPhase === "awaiting_plan_language" || isVoiceActive}
               data-testid="input-chat"
             />
-            <Button size="icon" variant={isVoiceActive ? "default" : "outline"} onClick={() => setIsVoiceActive(!isVoiceActive)} disabled={isTyping} data-testid="button-voice-call">
+            <button onClick={() => setIsVoiceActive(!isVoiceActive)} disabled={isTyping}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${isVoiceActive ? "bg-primary text-primary-foreground" : "bg-card border border-border/60 text-muted-foreground shadow-xs"}`}
+              data-testid="button-voice-call">
               <Mic className="w-4 h-4" />
-            </Button>
-            <Button size="icon" onClick={sendMessage} disabled={!chatInput.trim() || isTyping || chatPhase === "awaiting_plan_language" || isVoiceActive} data-testid="button-send-chat">
+            </button>
+            <button onClick={sendMessage} disabled={!chatInput.trim() || isTyping || chatPhase === "awaiting_plan_language" || isVoiceActive}
+              className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0 shadow-xs disabled:opacity-40"
+              data-testid="button-send-chat">
               <Send className="w-4 h-4" />
-            </Button>
+            </button>
           </div>
         </div>
       </main>
