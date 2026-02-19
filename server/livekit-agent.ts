@@ -150,8 +150,12 @@ export default defineAgent({
       });
 
       session.on('user_input_transcribed' as any, (ev: any) => {
-        if (ev.transcript && ev.isFinal) {
-          log(`Farmer said: ${ev.transcript}`);
+        if (ev.transcript) {
+          if (ev.isFinal) {
+            log(`[FINAL] Farmer said: "${ev.transcript}"`);
+          } else {
+            log(`[PARTIAL] Hearing: "${ev.transcript}"`);
+          }
         }
       });
 
