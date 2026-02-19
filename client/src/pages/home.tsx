@@ -55,11 +55,11 @@ const labels = {
   chooseLanguage: { English: "Choose your language", Telugu: "మీ భాషను ఎంచుకోండి", Hindi: "अपनी भाषा चुनें" } as Record<Language, string>,
   languageHint: { English: "The entire app will be in your language", Telugu: "యాప్ మొత్తం మీ భాషలో ఉంటుంది", Hindi: "पूरा ऐप आपकी भाषा में होगा" } as Record<Language, string>,
   uploadPhotos: { English: "Upload Crop Photos", Telugu: "పంట ఫోటోలు అప్‌లోడ్ చేయండి", Hindi: "फसल की फोटो अपलोड करें" } as Record<Language, string>,
-  uploadHint: { English: "Take 1-6 clear photos of affected leaves or crop", Telugu: "ప్రభావిత ఆకులు లేదా పంట యొక్క 1-6 ఫోటోలు తీయండి", Hindi: "प्रभावित पत्तियों या फसल की 1-6 फोटो लें" } as Record<Language, string>,
+  uploadHint: { English: "Take 1-3 clear photos of affected leaves or crop", Telugu: "ప్రభావిత ఆకులు లేదా పంట యొక్క 1-3 ఫోటోలు తీయండి", Hindi: "प्रभावित पत्तियों या फसल की 1-3 फोटो लें" } as Record<Language, string>,
   addMore: { English: "Add More", Telugu: "మరిన్ని జోడించు", Hindi: "और जोड़ें" } as Record<Language, string>,
   analyzeBtn: { English: "Analyze Crop", Telugu: "పంటను విశ్లేషించు", Hindi: "फसल का विश्लेषण करें" } as Record<Language, string>,
   uploading: { English: "Uploading...", Telugu: "అప్‌లోడ్ అవుతోంది...", Hindi: "अपलोड हो रहा है..." } as Record<Language, string>,
-  maxImages: { English: "Maximum 6 images allowed", Telugu: "గరిష్టంగా 6 చిత్రాలు అనుమతించబడతాయి", Hindi: "अधिकतम 6 छवियाँ अनुमत हैं" } as Record<Language, string>,
+  maxImages: { English: "Maximum 3 images allowed", Telugu: "గరిష్టంగా 3 చిత్రాలు అనుమతించబడతాయి", Hindi: "अधिकतम 3 छवियाँ अनुमत हैं" } as Record<Language, string>,
   typeMessage: { English: "Type your message...", Telugu: "మీ సందేశం టైప్ చేయండి...", Hindi: "अपना संदेश टाइप करें..." } as Record<Language, string>,
   planReady: { English: "Your 7-day treatment plan is ready! You can see it below.", Telugu: "మీ 7-రోజుల చికిత్స ప్రణాళిక సిద్ధంగా ఉంది! దిగువ చూడండి.", Hindi: "आपकी 7-दिन की उपचार योजना तैयार है! नीचे देखें." } as Record<Language, string>,
   choosePlanLanguage: { English: "Choose language for your treatment plan", Telugu: "మీ చికిత్స ప్రణాళిక కోసం భాషను ఎంచుకోండి", Hindi: "अपनी उपचार योजना के लिए भाषा चुनें" } as Record<Language, string>,
@@ -247,19 +247,40 @@ export default function Home() {
     }
   }, []);
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const fixImageOrientation = useCallback(async (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        } else {
+          resolve(URL.createObjectURL(file));
+        }
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = () => resolve(URL.createObjectURL(file));
+      img.src = URL.createObjectURL(file);
+    });
+  }, []);
+
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length + selectedFiles.length > 6) {
+    if (files.length + selectedFiles.length > 3) {
       toast({ title: labels.maxImages[language], variant: "destructive" });
       return;
     }
-    const newFiles = [...selectedFiles, ...files].slice(0, 6);
+    const newFiles = [...selectedFiles, ...files].slice(0, 3);
     setSelectedFiles(newFiles);
-    const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
-    previews.forEach((p) => URL.revokeObjectURL(p));
+    const newPreviews = await Promise.all(newFiles.map((file) => fixImageOrientation(file)));
+    previews.forEach((p) => { try { URL.revokeObjectURL(p); } catch {} });
     setPreviews(newPreviews);
     if (fileInputRef.current) fileInputRef.current.value = "";
-  }, [selectedFiles, previews, toast, language]);
+  }, [selectedFiles, previews, toast, language, fixImageOrientation]);
 
   const removeImage = useCallback((index: number) => {
     URL.revokeObjectURL(previews[index]);
@@ -555,7 +576,13 @@ export default function Home() {
   const getLabel = (key: keyof typeof labels) => labels[key][language] || labels[key].English;
 
   const formatPhone = (phone: string) => {
-    if (phone.length > 6) return phone.slice(0, -4).replace(/./g, '*') + phone.slice(-4);
+    const digits = phone.replace(/[^0-9]/g, '');
+    if (digits.length >= 10) {
+      const countryCode = digits.length > 10 ? '+' + digits.slice(0, digits.length - 10) : '+91';
+      const last4 = digits.slice(-4);
+      const maskedMiddle = '*'.repeat(digits.length - (digits.length > 10 ? digits.length - 10 : 0) - 4);
+      return `${countryCode} ${maskedMiddle}${last4}`;
+    }
     return phone;
   };
 
@@ -826,21 +853,7 @@ export default function Home() {
             {onboardingStep === "welcome" && (
               <motion.div key="welcome" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
                 <div className="flex flex-col items-center text-center space-y-6">
-                  <div className="w-full grid grid-cols-2 gap-3 mb-2">
-                    <div className="rounded-2xl bg-white/10 border border-white/15 aspect-[4/5] flex items-center justify-center">
-                      <Leaf className="w-10 h-10 text-white/50" />
-                    </div>
-                    <div className="space-y-3">
-                      <div className="rounded-2xl bg-white/10 border border-white/15 aspect-square flex items-center justify-center">
-                        <Sprout className="w-8 h-8 text-white/50" />
-                      </div>
-                      <div className="rounded-2xl bg-white/10 border border-white/15 aspect-square flex items-center justify-center">
-                        <ScanLine className="w-8 h-8 text-white/50" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 px-2">
+                  <div className="space-y-3 px-2 pt-4">
                     <h2 className={`text-[28px] font-extrabold text-white tracking-tight leading-tight ${langSpace(language)}`}>
                       {getLabel("welcomeTitle")}
                     </h2>
@@ -1073,14 +1086,14 @@ export default function Home() {
                 </div>
                 <div className="text-center">
                   <span className={`text-base font-bold text-gray-900 block ${langSpace(language)}`}>{getLabel("tapToCapture")}</span>
-                  <span className="text-[13px] text-gray-600 mt-1 block">1-6 photos</span>
+                  <span className="text-[13px] text-gray-600 mt-1 block">1-3 photos</span>
                 </div>
               </button>
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-2">
                   <span className={`text-[15px] font-semibold text-gray-900 ${langSpaceTight(language)}`}>{selectedFiles.length} {getLabel("photosSelected")}</span>
-                  {selectedFiles.length < 6 && (
+                  {selectedFiles.length < 3 && (
                     <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} data-testid="button-add-more-images" className="gap-1.5 rounded-xl text-[13px] font-semibold h-9">
                       <Plus className="w-4 h-4" /><span className={langSpaceTight(language)}>{getLabel("addMore")}</span>
                     </Button>
