@@ -18,7 +18,7 @@ import VoiceChat from "@/components/voice-chat";
 import logoImage from "@assets/Blue_and_Green_Farmers_Instagram_Post_(2)_1771525392133.png";
 
 type AppScreen = "onboarding" | "dashboard" | "capture" | "chat";
-type OnboardingStep = "language" | "phone" | "location";
+type OnboardingStep = "language" | "phone" | "welcome";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -63,11 +63,13 @@ const labels = {
   history: { English: "History", Telugu: "చరిత్ర", Hindi: "इतिहास" } as Record<Language, string>,
   stepLanguage: { English: "Language", Telugu: "భాష", Hindi: "भाषा" } as Record<Language, string>,
   stepPhone: { English: "Phone", Telugu: "ఫోన్", Hindi: "फोन" } as Record<Language, string>,
-  stepLocation: { English: "Location", Telugu: "స్థానం", Hindi: "स्थान" } as Record<Language, string>,
-  detectingLocation: { English: "Detecting your location...", Telugu: "మీ స్థానాన్ని గుర్తిస్తోంది...", Hindi: "आपका स्थान पता लगा रहा है..." } as Record<Language, string>,
-  locationDetected: { English: "Location detected", Telugu: "స్థానం గుర్తించబడింది", Hindi: "स्थान पता चला" } as Record<Language, string>,
-  locationFailed: { English: "Could not detect location", Telugu: "స్థానం గుర్తించలేకపోయింది", Hindi: "स्थान पता नहीं चल पाया" } as Record<Language, string>,
-  skipLocation: { English: "Skip & Continue", Telugu: "దాటవేసి కొనసాగించు", Hindi: "छोड़ें और जारी रखें" } as Record<Language, string>,
+  stepWelcome: { English: "Welcome", Telugu: "స్వాగతం", Hindi: "स्वागत" } as Record<Language, string>,
+  welcomeTitle: { English: "Welcome to KhetSathi!", Telugu: "ఖేత్‌సాథీకి స్వాగతం!", Hindi: "खेतसाथी में आपका स्वागत है!" } as Record<Language, string>,
+  welcomeDesc: { English: "Your AI-powered crop doctor is ready to help you diagnose crop diseases and get personalized treatment plans.", Telugu: "మీ AI పంట వైద్యుడు పంట రోగాలను నిర్ధారించడానికి మరియు వ్యక్తిగత చికిత్స ప్రణాళికలను పొందడానికి సిద్ధంగా ఉంది.", Hindi: "आपका AI फसल डॉक्टर फसल रोगों का निदान करने और व्यक्तिगत उपचार योजना प्राप्त करने के लिए तैयार है।" } as Record<Language, string>,
+  startNow: { English: "Start Now", Telugu: "ఇప్పుడు ప్రారంభించండి", Hindi: "अभी शुरू करें" } as Record<Language, string>,
+  welcomeFeature1: { English: "Instant AI crop diagnosis", Telugu: "తక్షణ AI పంట రోగ నిర్ధారణ", Hindi: "तुरंत AI फसल निदान" } as Record<Language, string>,
+  welcomeFeature2: { English: "7-day treatment plans", Telugu: "7-రోజుల చికిత్స ప్రణాళిక", Hindi: "7-दिन की उपचार योजना" } as Record<Language, string>,
+  welcomeFeature3: { English: "Track your crop health", Telugu: "మీ పంట ఆరోగ్యం ట్రాక్ చేయండి", Hindi: "अपनी फसल की सेहत ट्रैक करें" } as Record<Language, string>,
   scanCrop: { English: "Scan Your Crop", Telugu: "మీ పంటను స్కాన్ చేయండి", Hindi: "अपनी फसल स्कैन करें" } as Record<Language, string>,
   scanDesc: { English: "Take photos of affected crops for instant AI diagnosis", Telugu: "తక్షణ AI రోగనిర్ధారణ కోసం పంట ఫోటోలు తీయండి", Hindi: "तुरंत AI निदान के लिए फसल की फोटो लें" } as Record<Language, string>,
   recentDiagnoses: { English: "Recent Diagnoses", Telugu: "ఇటీవలి రోగ నిర్ధారణలు", Hindi: "हाल के निदान" } as Record<Language, string>,
@@ -104,8 +106,6 @@ export default function Home() {
   const [previews, setPreviews] = useState<string[]>([]);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [userLocation, setUserLocation] = useState<string | null>(savedLocation);
-  const [locationLoading, setLocationLoading] = useState(false);
-  const [locationDone, setLocationDone] = useState(false);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -146,16 +146,10 @@ export default function Home() {
     }
   }, []);
 
-  const detectLocation = useCallback(() => {
-    setLocationLoading(true);
-    const fallbackTimeout = setTimeout(() => {
-      setLocationDone(true);
-      setLocationLoading(false);
-    }, 10000);
-    if (navigator.geolocation) {
+  useEffect(() => {
+    if (!userLocation && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
-          clearTimeout(fallbackTimeout);
           try {
             const { latitude, longitude } = position.coords;
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`, {
@@ -165,49 +159,17 @@ export default function Home() {
             const district = data.address?.state_district || data.address?.county || data.address?.city || "";
             const state = data.address?.state || "";
             const loc = [district, state].filter(Boolean).join(", ");
-            if (loc) setUserLocation(loc);
-          } catch {} finally {
-            setLocationDone(true);
-            setLocationLoading(false);
-          }
+            if (loc) {
+              setUserLocation(loc);
+              localStorage.setItem("ks_location", loc);
+            }
+          } catch {}
         },
-        () => {
-          clearTimeout(fallbackTimeout);
-          setLocationDone(true);
-          setLocationLoading(false);
-        },
-        { timeout: 8000, enableHighAccuracy: false }
+        () => {},
+        { timeout: 10000, enableHighAccuracy: false }
       );
-    } else {
-      clearTimeout(fallbackTimeout);
-      setLocationDone(true);
-      setLocationLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    if (onboardingStep === "location" && !locationDone) {
-      detectLocation();
-    }
-  }, [onboardingStep, locationDone, detectLocation]);
-
-  useEffect(() => {
-    if (locationDone && onboardingStep === "location") {
-      const timer = setTimeout(() => {
-        localStorage.setItem("ks_phone", phoneNumber);
-        localStorage.setItem("ks_language", language);
-        if (userLocation) localStorage.setItem("ks_location", userLocation);
-        fetch("/api/set-language", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone: phoneNumber, language }),
-        }).catch(() => {});
-        setScreen("dashboard");
-        fetchRecentHistory(phoneNumber);
-      }, 1200);
-      return () => clearTimeout(timer);
-    }
-  }, [locationDone, onboardingStep, phoneNumber, language, userLocation, fetchRecentHistory]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -239,7 +201,16 @@ export default function Home() {
       if (!res.ok) throw new Error((await res.json()).message || "Failed");
       return res.json();
     },
-    onSuccess: () => setOnboardingStep("location"),
+    onSuccess: () => {
+      localStorage.setItem("ks_phone", phoneNumber);
+      localStorage.setItem("ks_language", language);
+      fetch("/api/set-language", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phoneNumber, language }),
+      }).catch(() => {});
+      setOnboardingStep("welcome");
+    },
     onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
   });
 
@@ -465,9 +436,9 @@ export default function Home() {
 
   const getLabel = (key: keyof typeof labels) => labels[key][language] || labels[key].English;
 
-  const onboardingSteps: OnboardingStep[] = ["language", "phone", "location"];
+  const onboardingSteps: OnboardingStep[] = ["language", "phone", "welcome"];
   const currentOnboardingIdx = onboardingSteps.indexOf(onboardingStep);
-  const stepLabelKeys: Record<OnboardingStep, keyof typeof labels> = { language: "stepLanguage", phone: "stepPhone", location: "stepLocation" };
+  const stepLabelKeys: Record<OnboardingStep, keyof typeof labels> = { language: "stepLanguage", phone: "stepPhone", welcome: "stepWelcome" };
 
   if (screen === "onboarding") {
     return (
@@ -597,48 +568,39 @@ export default function Home() {
               </motion.div>
             )}
 
-            {onboardingStep === "location" && (
-              <motion.div key="location" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-                <div className="flex flex-col items-center justify-center py-12 text-center space-y-5">
-                  <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-colors ${
-                    locationDone && userLocation ? "bg-primary/10" : locationDone ? "bg-muted" : "bg-primary/10"
-                  }`}>
-                    {locationLoading ? (
-                      <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                    ) : locationDone && userLocation ? (
-                      <MapPin className="w-10 h-10 text-primary" />
-                    ) : locationDone ? (
-                      <MapPin className="w-10 h-10 text-muted-foreground" />
-                    ) : (
-                      <MapPin className="w-10 h-10 text-primary" />
-                    )}
+            {onboardingStep === "welcome" && (
+              <motion.div key="welcome" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
+                <div className="flex flex-col items-center text-center py-6 space-y-5">
+                  <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Leaf className="w-12 h-12 text-primary" />
                   </div>
-
-                  {locationLoading && (
-                    <div>
-                      <p className="text-base font-semibold">{getLabel("detectingLocation")}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{getLabel("stepLocation")}</p>
-                    </div>
-                  )}
-
-                  {locationDone && userLocation && (
-                    <div>
-                      <div className="flex items-center justify-center gap-1.5 mb-1">
-                        <Check className="w-5 h-5 text-primary" />
-                        <p className="text-base font-semibold text-primary">{getLabel("locationDetected")}</p>
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">{getLabel("welcomeTitle")}</h2>
+                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed max-w-xs mx-auto">{getLabel("welcomeDesc")}</p>
+                  </div>
+                  <div className="w-full space-y-2.5 text-left">
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-md bg-primary/5 border border-primary/10">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <ScanLine className="w-4 h-4 text-primary" />
                       </div>
-                      <p className="text-sm text-foreground font-medium">{userLocation}</p>
+                      <span className="text-sm font-medium text-foreground">{getLabel("welcomeFeature1")}</span>
                     </div>
-                  )}
-
-                  {locationDone && !userLocation && (
-                    <div>
-                      <p className="text-base font-semibold text-muted-foreground">{getLabel("locationFailed")}</p>
-                      <Button variant="outline" className="mt-3 gap-2" onClick={() => { setScreen("dashboard"); fetchRecentHistory(phoneNumber); }} data-testid="button-skip-location">
-                        {getLabel("skipLocation")} <ArrowRight className="w-4 h-4" />
-                      </Button>
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-md bg-primary/5 border border-primary/10">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <CalendarDays className="w-4 h-4 text-primary" />
+                      </div>
+                      <span className="text-sm font-medium text-foreground">{getLabel("welcomeFeature2")}</span>
                     </div>
-                  )}
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-md bg-primary/5 border border-primary/10">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Clock className="w-4 h-4 text-primary" />
+                      </div>
+                      <span className="text-sm font-medium text-foreground">{getLabel("welcomeFeature3")}</span>
+                    </div>
+                  </div>
+                  <Button className="w-full gap-2 h-12" size="lg" onClick={() => { setScreen("dashboard"); fetchRecentHistory(phoneNumber); }} data-testid="button-start-now">
+                    {getLabel("startNow")} <ArrowRight className="w-4 h-4" />
+                  </Button>
                 </div>
               </motion.div>
             )}

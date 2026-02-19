@@ -15,7 +15,7 @@ Agricultural AI assistant where farmers upload crop images and receive disease d
 ### Onboarding (3 steps):
 1. **Language**: Choose English, Telugu, or Hindi
 2. **Phone**: Enter phone number → saved to DynamoDB
-3. **Location**: Auto GPS detection → auto-redirects to dashboard
+3. **Welcome**: Feature highlights + "Start Now" button → redirects to dashboard
 
 ### Dashboard (Main Home Screen):
 - Camera hero section (primary CTA - "Scan Your Crop")
