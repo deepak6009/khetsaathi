@@ -1,5 +1,6 @@
 import { defineAgent, type JobContext, cli, voice, ServerOptions } from '@livekit/agents';
 import * as openai from '@livekit/agents-plugin-openai';
+import * as silero from '@livekit/agents-plugin-silero';
 import { fileURLToPath } from 'node:url';
 import * as fs from 'node:fs';
 
@@ -133,7 +134,12 @@ export default defineAgent({
 
       log('Agent created with pipeline components');
 
+      const vadModel = silero.VAD.load();
+
+      log('VAD (Silero) loaded for speech detection');
+
       const session = new voice.AgentSession({
+        vad: await vadModel,
         stt: sttModel,
         llm: llmModel,
         tts: ttsModel,
