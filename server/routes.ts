@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
+import sharp from "sharp";
 import { uploadToS3 } from "./services/s3Service";
 import { detectDisease } from "./services/diseaseService";
 import { generateChatReply, extractCropAndLocation, detectPlanIntent, generateConversationalPlan, generateConversationSummary, getGreeting, type ChatMessage } from "./services/chatService";
@@ -127,9 +128,16 @@ export async function registerRoutes(
       if (!phone || phone.length < 10) {
         return res.status(400).json({ message: "Phone number is required" });
       }
-      log(`Uploading ${files.length} images to S3 for user ${phone}...`);
+      log(`Compressing & uploading ${files.length} images to S3 for user ${phone}...`);
       const imageUrls = await Promise.all(
-        files.map((file) => uploadToS3(file.buffer, file.originalname, file.mimetype, phone))
+        files.map(async (file) => {
+          const compressed = await sharp(file.buffer)
+            .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
+            .jpeg({ quality: 80 })
+            .toBuffer();
+          log(`Compressed ${file.originalname}: ${(file.buffer.length / 1024).toFixed(0)}KB → ${(compressed.length / 1024).toFixed(0)}KB`);
+          return uploadToS3(compressed, file.originalname.replace(/\.[^.]+$/, ".jpg"), "image/jpeg", phone);
+        })
       );
       log(`Images uploaded: ${imageUrls.join(", ")}`);
       return res.json({ success: true, imageUrls });
