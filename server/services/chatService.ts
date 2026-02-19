@@ -30,14 +30,12 @@ The farmer's preferred language is {LANGUAGE}. Start the conversation in {LANGUA
 
 The farmer has uploaded photos of their sick crop. You need to understand their full situation before you can help. These questions are MANDATORY — you must cover all of them before moving on.
 
-CONVERSATION FLOW — follow this order strictly. Ask ONLY ONE question per message:
-
-PRIORITY (ASK THESE FIRST — needed to start diagnosis in background):
-1. Which crop they are growing. Ask this warmly right after greeting.
-2. Where is their farm (village, district, or area).
+CONVERSATION FLOW — follow this order. Ask ONLY ONE question per message:
 
 BASICS:
-3. Ask their name warmly.
+1. First ask their name warmly.
+2. Which crop they are growing.
+3. Where is their farm (village or district).
 
 CROP STAGE:
 4. How long ago did they plant this crop?
@@ -299,11 +297,11 @@ Use bullet points throughout. Keep each point short and actionable. The farmer s
 function getGreeting(language: string): string {
   switch (language) {
     case "Telugu":
-      return "నమస్కారం! నేను ఖేత్ సాథీ, మీ AI పంట వైద్యుడిని. మీ పంట ఫోటోలు చూశాను. మీరు ఏ పంట పండిస్తున్నారు?";
+      return "నమస్కారం! నేను ఖేత్ సాథీ, మీ AI పంట వైద్యుడిని. మీ పంట ఫోటోలు చూశాను. ముందుగా మీ పేరు చెప్పగలరా?";
     case "Hindi":
-      return "नमस्ते! मैं खेतसाथी हूं, आपका AI फसल डॉक्टर। मैंने आपकी फसल की तस्वीरें देखी हैं। आप कौन सी फसल उगा रहे हैं?";
+      return "नमस्ते! मैं खेतसाथी हूं, आपका AI फसल डॉक्टर। मैंने आपकी फसल की तस्वीरें देखी हैं। पहले अपना नाम बताइए?";
     default:
-      return "Hello! Welcome to KhetSathi, your AI Crop Doctor. I've seen your crop photos. Which crop are you growing?";
+      return "Hello! Welcome to KhetSathi, your AI Crop Doctor. I've seen your crop photos. May I know your name please?";
   }
 }
 
