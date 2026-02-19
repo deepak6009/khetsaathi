@@ -1246,7 +1246,7 @@ export default function Home() {
 
         {isVoiceActive && (
           <div className="border-t border-gray-100 bg-white">
-            <VoiceChat phone={phoneNumber} language={language} onClose={() => setIsVoiceActive(false)} />
+            <VoiceChat phone={phoneNumber} language={language} imageUrls={imageUrls} onClose={() => setIsVoiceActive(false)} />
           </div>
         )}
 

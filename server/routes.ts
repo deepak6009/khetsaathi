@@ -2,7 +2,6 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
 import sharp from "sharp";
-import { AccessToken, RoomServiceClient } from "livekit-server-sdk";
 import { uploadToS3 } from "./services/s3Service";
 import { detectDisease } from "./services/diseaseService";
 import { generateChatReply, extractCropAndLocation, detectPlanIntent, generateConversationalPlan, generateConversationSummary, getGreeting, type ChatMessage } from "./services/chatService";
@@ -364,62 +363,6 @@ export async function registerRoutes(
     } catch (error: any) {
       log(`History fetch error: ${error.message}`);
       return res.status(500).json({ message: "Failed to fetch history" });
-    }
-  });
-
-  app.post("/api/livekit/token", async (req, res) => {
-    try {
-      const { phone, language } = req.body;
-      if (!phone) {
-        return res.status(400).json({ message: "Phone number is required" });
-      }
-
-      const livekitApiKey = process.env.LIVEKIT_API_KEY;
-      const livekitApiSecret = process.env.LIVEKIT_API_SECRET;
-      const livekitUrl = process.env.LIVEKIT_URL;
-
-      if (!livekitApiKey || !livekitApiSecret || !livekitUrl) {
-        return res.status(500).json({ message: "LiveKit is not configured" });
-      }
-
-      const roomName = `khetsathi-${phone}-${Date.now()}`;
-      const participantIdentity = `farmer-${phone}`;
-      const roomMetadata = JSON.stringify({ language: language || "English", phone });
-
-      const at = new AccessToken(livekitApiKey, livekitApiSecret, {
-        identity: participantIdentity,
-        ttl: "30m",
-      });
-      at.addGrant({
-        roomJoin: true,
-        room: roomName,
-        canPublish: true,
-        canSubscribe: true,
-        canPublishData: true,
-      });
-      at.metadata = roomMetadata;
-
-      const roomService = new RoomServiceClient(livekitUrl, livekitApiKey, livekitApiSecret);
-      try {
-        await roomService.createRoom({
-          name: roomName,
-          metadata: roomMetadata,
-        });
-      } catch (roomErr: any) {
-        log(`Room creation warning (may already exist): ${roomErr.message}`);
-      }
-
-      const token = await at.toJwt();
-      log(`LiveKit token generated for ${phone}, room: ${roomName}`);
-
-      return res.json({
-        token,
-        url: livekitUrl,
-        roomName,
-      });
-    } catch (error: any) {
-      log(`LiveKit token error: ${error.message}`);
-      return res.status(500).json({ message: "Failed to generate voice token" });
     }
   });
 

@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { spawn, type ChildProcess } from "child_process";
+import { setupVoiceWebSocket } from "./voice-handler";
 
 const app = express();
 const httpServer = createServer(app);
@@ -99,58 +99,8 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
-      startLiveKitAgent();
+      setupVoiceWebSocket(httpServer);
+      log("Voice WebSocket handler attached");
     },
   );
 })();
-
-let agentProcess: ChildProcess | null = null;
-
-function startLiveKitAgent() {
-  if (!process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET || !process.env.LIVEKIT_URL) {
-    log("LiveKit credentials not configured, skipping voice agent", "livekit");
-    return;
-  }
-
-  if (agentProcess) {
-    agentProcess.kill();
-    agentProcess = null;
-  }
-
-  log("Starting LiveKit voice agent...", "livekit");
-  agentProcess = spawn("npx", ["tsx", "server/livekit-agent.ts", "dev"], {
-    stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env },
-    cwd: process.cwd(),
-  });
-
-  agentProcess.stdout?.on("data", (data: Buffer) => {
-    const lines = data.toString().trim().split("\n");
-    for (const line of lines) {
-      if (line.trim()) log(line.trim(), "livekit");
-    }
-  });
-
-  agentProcess.stderr?.on("data", (data: Buffer) => {
-    const lines = data.toString().trim().split("\n");
-    for (const line of lines) {
-      if (line.trim()) log(line.trim(), "livekit");
-    }
-  });
-
-  agentProcess.on("exit", (code) => {
-    log(`Voice agent exited with code ${code}`, "livekit");
-    agentProcess = null;
-    if (code !== 0 && code !== null) {
-      log("Restarting voice agent in 5 seconds...", "livekit");
-      setTimeout(startLiveKitAgent, 5000);
-    }
-  });
-}
-
-process.on("SIGTERM", () => {
-  if (agentProcess) agentProcess.kill();
-});
-process.on("SIGINT", () => {
-  if (agentProcess) agentProcess.kill();
-});
