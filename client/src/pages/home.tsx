@@ -162,7 +162,8 @@ export default function Home() {
   }, []);
 
   const runPlanIntentAgent = useCallback(async (allMessages: ChatMessage[]) => {
-    if (chatPhaseRef.current !== "asking_plan") return;
+    const phase = chatPhaseRef.current;
+    if (phase !== "diagnosed" && phase !== "asking_plan") return;
 
     try {
       const res = await fetch("/api/chat/detect-plan-intent", {
@@ -172,7 +173,8 @@ export default function Home() {
       });
       if (!res.ok) return;
       const data = await res.json();
-      if (data.wantsPlan && chatPhaseRef.current === "asking_plan") {
+      const curPhase = chatPhaseRef.current;
+      if (data.wantsPlan && (curPhase === "diagnosed" || curPhase === "asking_plan")) {
         setChatPhase("generating_plan");
         triggerPlanGeneration(allMessages);
       }
@@ -211,10 +213,6 @@ export default function Home() {
       const assistantMsg: ChatMessage = { role: "assistant", content: chatData.reply };
       const newMessages = [...updatedMessages, assistantMsg];
       setMessages(newMessages);
-
-      if (isDiagnosedFirstReply) {
-        setChatPhase("asking_plan");
-      }
 
       runExtractionAgent(newMessages);
       runPlanIntentAgent(newMessages);
