@@ -6,7 +6,7 @@ import { AccessToken, RoomServiceClient } from "livekit-server-sdk";
 import { uploadToS3 } from "./services/s3Service";
 import { detectDisease } from "./services/diseaseService";
 import { generateChatReply, extractCropAndLocation, detectPlanIntent, generateConversationalPlan, generateConversationSummary, getGreeting, type ChatMessage } from "./services/chatService";
-import { saveUserToDynamo, saveUserCase, saveChatSummary } from "./services/dynamoService";
+import { saveUserToDynamo, saveUserCase, saveChatSummary, getChatSummaries, getUserCases, updateUserProfileImage, getUserFromDynamo } from "./services/dynamoService";
 import { generatePdf } from "./services/pdfService";
 import { uploadPdfToS3 } from "./services/s3Service";
 import { phoneSchema, languageSchema } from "@shared/schema";
@@ -94,8 +94,9 @@ export async function registerRoutes(
         return res.status(400).json({ message: validation.error.errors.map(e => e.message).join(", ") });
       }
       const { phone } = validation.data;
-      const user = await saveUserToDynamo(phone);
-      log(`User registered: ${phone}`);
+      const language = req.body.language || "English";
+      const user = await saveUserToDynamo(phone, language);
+      log(`User registered: ${phone}, language: ${language}`);
       return res.json({ success: true, user });
     } catch (error: any) {
       log(`Register phone error: ${error.message}`);
@@ -119,7 +120,49 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/upload-images", upload.array("images", 3), async (req, res) => {
+  app.post("/api/upload-selfie", upload.single("selfie"), async (req, res) => {
+    try {
+      const file = req.file;
+      const phone = req.body.phone;
+      if (!file) {
+        return res.status(400).json({ message: "Selfie image is required" });
+      }
+      if (!phone || phone.length < 10) {
+        return res.status(400).json({ message: "Phone number is required" });
+      }
+      log(`Uploading selfie for user ${phone}...`);
+      const compressed = await sharp(file.buffer)
+        .resize(400, 400, { fit: "cover" })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+      const imageUrl = await uploadToS3(compressed, "selfie.jpg", "image/jpeg", phone);
+      await updateUserProfileImage(phone, imageUrl);
+      log(`Selfie uploaded: ${imageUrl}`);
+      return res.json({ success: true, profileImageUrl: imageUrl });
+    } catch (error: any) {
+      log(`Upload selfie error: ${error.message}`);
+      return res.status(500).json({ message: "Failed to upload selfie" });
+    }
+  });
+
+  app.get("/api/user-profile/:phone", async (req, res) => {
+    try {
+      const phone = req.params.phone;
+      if (!phone || phone.length < 10) {
+        return res.status(400).json({ message: "Valid phone number is required" });
+      }
+      const user = await getUserFromDynamo(phone);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      return res.json({ success: true, user });
+    } catch (error: any) {
+      log(`Get user profile error: ${error.message}`);
+      return res.status(500).json({ message: "Failed to get user profile" });
+    }
+  });
+
+  app.post("/api/upload-images", upload.array("images", 6), async (req, res) => {
     try {
       const files = req.files as Express.Multer.File[];
       const phone = req.body.phone;
@@ -288,6 +331,39 @@ export async function registerRoutes(
     } catch (error: any) {
       log(`Save usercase error: ${error.message}`);
       return res.status(500).json({ message: "Failed to save case" });
+    }
+  });
+
+  app.get("/api/history/:phone", async (req, res) => {
+    try {
+      const phone = decodeURIComponent(req.params.phone);
+      if (!phone || phone.length < 10) {
+        return res.status(400).json({ message: "Valid phone number is required" });
+      }
+      const [cases, summaries] = await Promise.all([
+        getUserCases(phone),
+        getChatSummaries(phone),
+      ]);
+      const combined = [...summaries.map(s => ({
+        phone: s.phone,
+        timestamp: s.timestamp,
+        conversationSummary: s.conversationSummary,
+        pdfUrl: s.pdfUrl,
+        language: s.language,
+        diagnosis: s.diagnosis,
+        imageUrls: s.imageUrls,
+      })), ...cases.filter(c => !summaries.some(s => s.timestamp === c.timestamp)).map(c => ({
+        phone: c.phone,
+        timestamp: c.timestamp,
+        conversationSummary: c.conversationSummary,
+        diagnosis: c.diagnosis,
+        language: c.language,
+        imageUrls: c.imageUrls,
+      }))];
+      return res.json({ history: combined });
+    } catch (error: any) {
+      log(`History fetch error: ${error.message}`);
+      return res.status(500).json({ message: "Failed to fetch history" });
     }
   });
 
