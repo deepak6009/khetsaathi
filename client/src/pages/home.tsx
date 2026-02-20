@@ -214,7 +214,7 @@ export default function Home() {
 
   const fetchRecentHistory = useCallback(async (phone: string) => {
     if (!phone) return;
-    setHistoryLoading(true);
+    if (recentHistory.length === 0) setHistoryLoading(true);
     try {
       const res = await fetch(`/api/history/${encodeURIComponent(phone)}`);
       const data = await res.json();
@@ -224,7 +224,7 @@ export default function Home() {
     } catch {} finally {
       setHistoryLoading(false);
     }
-  }, []);
+  }, [recentHistory.length]);
 
   useEffect(() => {
     if (!userLocation && navigator.geolocation) {
@@ -394,6 +394,22 @@ export default function Home() {
       }
     } catch {}
   }, []);
+
+  const voiceMsgCountRef = useRef(0);
+
+  const handleVoiceTranscript = useCallback((msg: ChatMessage) => {
+    setMessages((prev) => {
+      const newMessages = [...prev, msg];
+      if (msg.role === "user") {
+        voiceMsgCountRef.current += 1;
+        if (voiceMsgCountRef.current >= 2) {
+          runExtractionAgent(newMessages);
+        }
+      }
+      runPlanIntentAgent(newMessages);
+      return newMessages;
+    });
+  }, [runExtractionAgent, runPlanIntentAgent]);
 
   const sendMessage = useCallback(async () => {
     const text = chatInput.trim();
@@ -928,7 +944,7 @@ export default function Home() {
         />
 
         <main className="flex-1 max-w-lg mx-auto w-full px-4 py-5 space-y-5">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
             {profileImageUrl ? (
               <img src={profileImageUrl} alt="Profile" className="w-11 h-11 rounded-full object-cover border-2 border-white shadow-sm" data-testid="img-profile-avatar" />
             ) : (
@@ -946,9 +962,9 @@ export default function Home() {
                 <span className="text-[13px] text-gray-700 font-semibold max-w-[100px] truncate">{userLocation}</span>
               </div>
             )}
-          </motion.div>
+          </div>
 
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+          <div>
             <button
               onClick={goToCapture}
               className="w-full rounded-2xl overflow-hidden shadow-lg active:scale-[0.98] transition-all duration-200"
@@ -966,9 +982,9 @@ export default function Home() {
                 <ChevronRight className="w-5 h-5 text-white/60 flex-shrink-0" />
               </div>
             </button>
-          </motion.div>
+          </div>
 
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.08 }}>
+          <div>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={goToCapture}
@@ -992,9 +1008,9 @@ export default function Home() {
                 </button>
               </Link>
             </div>
-          </motion.div>
+          </div>
 
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.16 }}>
+          <div>
             <div className="flex items-center justify-between gap-2 mb-3">
               <h3 className={`text-[14px] font-bold text-gray-600 uppercase tracking-wider ${langSpaceTight(language)}`}>{getLabel("recentDiagnoses")}</h3>
               {recentHistory.length > 0 && (
@@ -1050,7 +1066,7 @@ export default function Home() {
                 ))}
               </div>
             )}
-          </motion.div>
+          </div>
         </main>
 
         <footer className="mt-auto">
@@ -1302,8 +1318,8 @@ export default function Home() {
         </div>
 
         {isVoiceActive && (
-          <div className="border-t border-green-100 bg-white/90 backdrop-blur-sm">
-            <VoiceChat phone={phoneNumber} language={language} onClose={() => setIsVoiceActive(false)} />
+          <div className="border-t border-gray-100 bg-white">
+            <VoiceChat phone={phoneNumber} language={language} imageUrls={imageUrls} chatHistory={messages} onClose={() => setIsVoiceActive(false)} onTranscript={handleVoiceTranscript} />
           </div>
         )}
 
@@ -1319,9 +1335,9 @@ export default function Home() {
               disabled={isTyping || chatPhase === "awaiting_plan_language" || isVoiceActive}
               data-testid="input-chat"
             />
-            <button onClick={() => setIsVoiceActive(!isVoiceActive)} disabled={isTyping}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all active:scale-90 ${isVoiceActive ? "text-white shadow-md" : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/60"}`}
-              style={isVoiceActive ? { background: "linear-gradient(135deg, #6BC30D 0%, #4a9a08 100%)" } : undefined}
+            <button onClick={() => { if (!isVoiceActive) voiceMsgCountRef.current = 0; setIsVoiceActive(!isVoiceActive); }} disabled={isTyping}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${isVoiceActive ? "text-white shadow-md" : "bg-gray-50 border border-gray-200 text-gray-500"}`}
+              style={isVoiceActive ? { backgroundColor: "#6BC30D" } : undefined}
               data-testid="button-voice-call">
               <Mic className="w-[18px] h-[18px]" />
             </button>

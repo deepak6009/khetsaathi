@@ -1,136 +1,131 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { Mic, MicOff, PhoneOff, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
-  useConnectionState,
   useVoiceAssistant,
   BarVisualizer,
+  useConnectionState,
   useLocalParticipant,
   useRoomContext,
 } from "@livekit/components-react";
 import "@livekit/components-styles";
-import { ConnectionState, RoomEvent } from "livekit-client";
-import { Mic, MicOff, PhoneOff, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ConnectionState, RoomEvent, TranscriptionSegment, Participant } from "livekit-client";
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 
 interface VoiceChatProps {
   phone: string;
   language: string;
+  imageUrls: string[];
+  chatHistory?: ChatMessage[];
   onClose: () => void;
+  onTranscript?: (message: ChatMessage) => void;
 }
 
-function VoiceUI({ onClose }: { onClose: () => void }) {
+function VoiceAssistantUI({
+  language,
+  onClose,
+  onTranscript,
+}: {
+  language: string;
+  onClose: () => void;
+  onTranscript?: (message: ChatMessage) => void;
+}) {
+  const { audioTrack, state } = useVoiceAssistant();
   const connectionState = useConnectionState();
-  const { state: agentState, audioTrack } = useVoiceAssistant();
-  const { localParticipant } = useLocalParticipant();
+  const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
+  const isMuted = !isMicrophoneEnabled;
   const room = useRoomContext();
-  const [isMuted, setIsMuted] = useState(false);
-  const [debugInfo, setDebugInfo] = useState('');
-
-  const isConnected = connectionState === ConnectionState.Connected;
-  const isConnecting = connectionState === ConnectionState.Connecting;
+  const processedSegmentsRef = useRef<Set<string>>(new Set());
+  const onTranscriptRef = useRef(onTranscript);
+  onTranscriptRef.current = onTranscript;
 
   useEffect(() => {
     if (!room) return;
+    processedSegmentsRef.current.clear();
 
-    const handleTrackSubscribed = (track: any, pub: any, participant: any) => {
-      console.log(`[voice] Track subscribed: ${participant.identity}, kind=${track.kind}, sid=${pub.trackSid}`);
-      setDebugInfo(`Agent audio connected`);
+    const handleTranscription = (
+      segments: TranscriptionSegment[],
+      participant?: Participant,
+    ) => {
+      for (const segment of segments) {
+        if (segment.final && !processedSegmentsRef.current.has(segment.id)) {
+          processedSegmentsRef.current.add(segment.id);
+          const text = segment.text.trim();
+          if (text && onTranscriptRef.current) {
+            const isLocal = participant?.identity === localParticipant?.identity;
+            onTranscriptRef.current({
+              role: isLocal ? "user" : "assistant",
+              content: text,
+            });
+          }
+        }
+      }
     };
 
-    const handleTrackUnsubscribed = (track: any, pub: any, participant: any) => {
-      console.log(`[voice] Track unsubscribed: ${participant.identity}`);
-    };
-
-    room.on(RoomEvent.TrackSubscribed, handleTrackSubscribed);
-    room.on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed);
-
+    room.on(RoomEvent.TranscriptionReceived, handleTranscription);
     return () => {
-      room.off(RoomEvent.TrackSubscribed, handleTrackSubscribed);
-      room.off(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed);
+      room.off(RoomEvent.TranscriptionReceived, handleTranscription);
+      processedSegmentsRef.current.clear();
     };
-  }, [room]);
+  }, [room, localParticipant?.identity]);
+
+  const toggleMute = useCallback(async () => {
+    if (localParticipant) {
+      await localParticipant.setMicrophoneEnabled(isMuted);
+    }
+  }, [localParticipant, isMuted]);
 
   const getStatusText = () => {
-    if (isConnecting) return "Connecting...";
-    if (!isConnected) return "Disconnected";
-    switch (agentState) {
-      case "listening": return "Listening...";
-      case "thinking": return "Thinking...";
-      case "speaking": return "Speaking...";
-      default: return "Connected";
+    if (connectionState === ConnectionState.Connecting) return language === "Telugu" ? "కనెక్ట్ అవుతోంది..." : language === "Hindi" ? "कनेक्ट हो रहा है..." : "Connecting...";
+    if (connectionState === ConnectionState.Disconnected) return language === "Telugu" ? "డిస్కనెక్ట్ అయింది" : language === "Hindi" ? "डिस्कनेक्ट" : "Disconnected";
+
+    switch (state) {
+      case "listening": return isMuted
+        ? (language === "Telugu" ? "మ్యూట్" : language === "Hindi" ? "म्यूट" : "Muted")
+        : (language === "Telugu" ? "వింటోంది..." : language === "Hindi" ? "सुन रहा है..." : "Listening...");
+      case "thinking": return language === "Telugu" ? "ఆలోచిస్తోంది..." : language === "Hindi" ? "सोच रहा है..." : "Thinking...";
+      case "speaking": return language === "Telugu" ? "మాట్లాడుతోంది..." : language === "Hindi" ? "बोल रहा है..." : "Speaking...";
+      default: return language === "Telugu" ? "సిద్ధంగా ఉంది..." : language === "Hindi" ? "तैयार हो रहा है..." : "Getting ready...";
     }
   };
 
   const getStatusColor = () => {
-    if (!isConnected) return "text-muted-foreground";
-    switch (agentState) {
-      case "listening": return "text-green-500";
+    if (connectionState !== ConnectionState.Connected) return "text-muted-foreground";
+    switch (state) {
+      case "listening": return isMuted ? "text-red-500" : "text-green-500";
       case "thinking": return "text-yellow-500";
       case "speaking": return "text-blue-500";
       default: return "text-muted-foreground";
     }
   };
 
-  const isInIframe = window.self !== window.top;
-
   return (
-    <div className="flex flex-col items-center gap-4 py-6 px-4">
-      {isInIframe && (
-        <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 rounded-md" data-testid="text-iframe-warning">
-          <ExternalLink className="w-3 h-3 flex-shrink-0" />
-          <span>For best voice experience, open in a new tab</span>
-          <a
-            href={window.location.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline font-medium"
-            data-testid="link-open-new-tab"
-          >
-            Open
-          </a>
-        </div>
-      )}
-
+    <div className="flex flex-col items-center gap-4 py-6 px-4" data-testid="voice-chat-panel">
       <div className="w-full max-w-[200px] h-[80px] flex items-center justify-center">
-        {audioTrack ? (
-          <BarVisualizer
-            state={agentState}
-            barCount={5}
-            trackRef={audioTrack}
-            className="w-full h-full"
-          />
-        ) : (
-          <div className="flex gap-1 items-center justify-center h-full">
-            {[...Array(5)].map((_, i) => (
-              <div
-                key={i}
-                className={`w-2 rounded-full bg-primary/30 ${isConnecting ? "animate-pulse" : ""}`}
-                style={{ height: `${20 + Math.random() * 30}px` }}
-              />
-            ))}
-          </div>
-        )}
+        <BarVisualizer
+          trackRef={audioTrack}
+          state={state}
+          barCount={5}
+          style={{ width: "100%", height: "100%" }}
+        />
       </div>
 
       <p className={`text-sm font-medium ${getStatusColor()}`} data-testid="text-voice-status">
         {getStatusText()}
       </p>
 
-      {debugInfo && (
-        <p className="text-xs text-muted-foreground" data-testid="text-voice-debug">{debugInfo}</p>
-      )}
-
       <div className="flex gap-3 items-center">
         <Button
           size="icon"
           variant={isMuted ? "destructive" : "outline"}
-          onClick={() => {
-            const newMuted = !isMuted;
-            setIsMuted(newMuted);
-            localParticipant.setMicrophoneEnabled(!newMuted);
-          }}
-          disabled={!isConnected}
+          onClick={toggleMute}
+          disabled={connectionState !== ConnectionState.Connected}
           data-testid="button-toggle-mute"
         >
           {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
@@ -149,77 +144,97 @@ function VoiceUI({ onClose }: { onClose: () => void }) {
   );
 }
 
-export default function VoiceChat({ phone, language, onClose }: VoiceChatProps) {
-  const [token, setToken] = useState<string | null>(null);
-  const [url, setUrl] = useState<string | null>(null);
+export default function VoiceChat({ phone, language, imageUrls, chatHistory, onClose, onTranscript }: VoiceChatProps) {
+  const [connectionDetails, setConnectionDetails] = useState<{
+    token: string;
+    url: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const fetchedRef = useRef(false);
-
-  const fetchToken = useCallback(async () => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
-    try {
-      setIsLoading(true);
-      setError(null);
-      const res = await fetch("/api/livekit/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, language }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Failed to start voice call");
-      }
-      const data = await res.json();
-      setToken(data.token);
-      setUrl(data.url);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [phone, language]);
+  const [micReady, setMicReady] = useState(false);
 
   useEffect(() => {
-    fetchToken();
-  }, [fetchToken]);
+    let cancelled = false;
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-8">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-muted-foreground">Starting voice call...</p>
-      </div>
-    );
-  }
+    async function initVoice() {
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (cancelled) return;
+        setMicReady(true);
+      } catch (micErr: any) {
+        if (cancelled) return;
+        const micMessage = language === "Telugu"
+          ? "మైక్రోఫోన్ అనుమతి అవసరం. దయచేసి బ్రౌజర్ సెట్టింగ్స్‌లో మైక్రోఫోన్ అనుమతించండి."
+          : language === "Hindi"
+          ? "माइक्रोफ़ोन की अनुमति आवश्यक है। कृपया ब्राउज़र सेटिंग्स में माइक्रोफ़ोन की अनुमति दें।"
+          : "Microphone permission is required. Please allow microphone access in your browser settings.";
+        setError(micMessage);
+        return;
+      }
+
+      try {
+        const resp = await fetch("/api/livekit/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone, language, imageUrls, chatHistory: chatHistory || [] }),
+        });
+        if (cancelled) return;
+        if (!resp.ok) {
+          const data = await resp.json();
+          throw new Error(data.message || "Failed to get token");
+        }
+        const data = await resp.json();
+        setConnectionDetails({ token: data.token, url: data.url });
+      } catch (err: any) {
+        if (cancelled) return;
+        setError(err.message || "Connection failed");
+      }
+    }
+    initVoice();
+    return () => { cancelled = true; };
+  }, [phone, language, imageUrls]);
+
+  const handleDisconnect = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  const handleError = useCallback((err: Error) => {
+    console.error("LiveKit room error:", err);
+  }, []);
 
   if (error) {
     return (
-      <div className="flex flex-col items-center gap-3 py-8">
-        <p className="text-sm text-destructive">{error}</p>
-        <Button variant="outline" size="sm" onClick={() => { fetchedRef.current = false; fetchToken(); }}>
-          Try Again
+      <div className="flex flex-col items-center gap-4 py-6 px-4" data-testid="voice-chat-panel">
+        <AlertTriangle className="w-8 h-8 text-yellow-500" />
+        <p className="text-sm text-destructive text-center" data-testid="text-voice-error">{error}</p>
+        <Button variant="outline" onClick={onClose} data-testid="button-close-error">
+          {language === "Telugu" ? "మూసివేయి" : language === "Hindi" ? "बंद करें" : "Close"}
         </Button>
       </div>
     );
   }
 
-  if (!token || !url) {
-    return null;
+  if (!connectionDetails || !micReady) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-6 px-4" data-testid="voice-chat-panel">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-muted-foreground">
+          {language === "Telugu" ? "కనెక్ట్ అవుతోంది..." : language === "Hindi" ? "कनेक्ट हो रहा है..." : "Connecting..."}
+        </p>
+      </div>
+    );
   }
 
   return (
     <LiveKitRoom
-      serverUrl={url}
-      token={token}
+      serverUrl={connectionDetails.url}
+      token={connectionDetails.token}
       connect={true}
       audio={true}
       video={false}
-      onDisconnected={onClose}
-      data-testid="livekit-room"
+      onDisconnected={handleDisconnect}
+      onError={handleError}
     >
-      <VoiceUI onClose={onClose} />
+      <VoiceAssistantUI language={language} onClose={handleDisconnect} onTranscript={onTranscript} />
       <RoomAudioRenderer />
     </LiveKitRoom>
   );
