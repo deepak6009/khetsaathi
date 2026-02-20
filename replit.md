@@ -41,11 +41,13 @@ Agricultural AI assistant where farmers upload crop images and receive disease d
 - `onboarding` → `dashboard` → `capture` → `chat`
 - All screens have localized "Back" button text (changes with language)
 - Dashboard is the main hub after onboarding
+- **Voice Guide**: Every screen after language selection has a floating speaker button (bottom-right) that auto-plays spoken instructions in the user's language using browser SpeechSynthesis API. Tap to replay or stop. Shows "Tap to hear instructions" hint if auto-play is blocked.
 
 ## Project Structure
 - `client/src/pages/home.tsx` - Main app with 4 screens: onboarding, dashboard, capture, chat
 - `client/src/pages/history.tsx` - Full diagnosis history page
 - `client/src/components/voice-chat.tsx` - WebSocket-based voice chat with Web Audio API VAD
+- `client/src/components/voice-guide-button.tsx` - Floating voice guide FAB with browser SpeechSynthesis (auto-plays instructions per screen in 3 languages)
 - `client/src/components/treatment-plan.tsx` - Legacy treatment plan display
 - `server/routes.ts` - API endpoints (10+ endpoints)
 - `server/services/chatService.ts` - Gemini-powered conversational AI

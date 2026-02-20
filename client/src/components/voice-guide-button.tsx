@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 type ScreenKey = "phone" | "photo" | "welcome" | "dashboard" | "capture" | "chat";
@@ -53,8 +53,9 @@ interface VoiceGuideButtonProps {
 
 export default function VoiceGuideButton({ screen, language, dark = false }: VoiceGuideButtonProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [showHint, setShowHint] = useState(false);
   const hasAutoPlayed = useRef(false);
-  const mountId = useRef(`${screen}-${Date.now()}`);
+  const mountedRef = useRef(true);
 
   const speak = useCallback(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
@@ -75,25 +76,58 @@ export default function VoiceGuideButton({ screen, language, dark = false }: Voi
                   voices.find(v => v.lang.startsWith(langCode.split("-")[0]));
     if (match) utterance.voice = match;
 
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
+    utterance.onstart = () => {
+      if (mountedRef.current) {
+        setIsSpeaking(true);
+        setShowHint(false);
+      }
+    };
+    utterance.onend = () => {
+      if (mountedRef.current) setIsSpeaking(false);
+    };
+    utterance.onerror = () => {
+      if (mountedRef.current) {
+        setIsSpeaking(false);
+        setShowHint(true);
+      }
+    };
 
     window.speechSynthesis.speak(utterance);
   }, [screen, language]);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
     if (hasAutoPlayed.current) return;
     hasAutoPlayed.current = true;
 
+    const trySpeak = () => {
+      if (!mountedRef.current) return;
+      try {
+        speak();
+        setTimeout(() => {
+          if (mountedRef.current && !window.speechSynthesis?.speaking) {
+            setShowHint(true);
+          }
+        }, 1500);
+      } catch {
+        if (mountedRef.current) setShowHint(true);
+      }
+    };
+
     const timer = setTimeout(() => {
+      if (!mountedRef.current) return;
       const voices = window.speechSynthesis?.getVoices();
       if (voices && voices.length > 0) {
-        speak();
-      } else if (window.speechSynthesis) {
+        trySpeak();
+      } else {
         const handler = () => {
-          speak();
-          window.speechSynthesis.onvoiceschanged = null;
+          if (mountedRef.current) trySpeak();
+          if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null;
         };
         window.speechSynthesis.onvoiceschanged = handler;
       }
@@ -101,20 +135,26 @@ export default function VoiceGuideButton({ screen, language, dark = false }: Voi
 
     return () => {
       clearTimeout(timer);
-      window.speechSynthesis?.cancel();
-      setIsSpeaking(false);
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
     };
   }, [speak]);
 
   useEffect(() => {
     return () => {
-      window.speechSynthesis?.cancel();
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
     };
   }, []);
 
   const handleClick = () => {
+    setShowHint(false);
     if (isSpeaking) {
-      window.speechSynthesis?.cancel();
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
       setIsSpeaking(false);
     } else {
       speak();
@@ -122,34 +162,48 @@ export default function VoiceGuideButton({ screen, language, dark = false }: Voi
   };
 
   return (
-    <motion.button
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: 0.3, duration: 0.3 }}
-      onClick={handleClick}
-      data-testid={`button-voice-guide-${screen}`}
-      className={`fixed bottom-24 right-4 z-50 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 active:scale-95 ${
-        isSpeaking
-          ? "ring-2 ring-offset-2"
-          : ""
-      }`}
-      style={{
-        backgroundColor: isSpeaking ? "#6BC30D" : dark ? "rgba(255,255,255,0.15)" : "#ffffff",
-        borderColor: "#6BC30D",
-        border: isSpeaking ? "none" : "2px solid #6BC30D",
-      }}
-      aria-label={isSpeaking ? "Stop voice guide" : "Play voice guide"}
-    >
-      {isSpeaking ? (
+    <>
+      <motion.button
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.3, duration: 0.3 }}
+        onClick={handleClick}
+        data-testid={`button-voice-guide-${screen}`}
+        className={`fixed bottom-24 right-4 z-50 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 active:scale-95 ${
+          isSpeaking ? "ring-2 ring-offset-2" : ""
+        }`}
+        style={{
+          backgroundColor: isSpeaking ? "#6BC30D" : dark ? "rgba(255,255,255,0.15)" : "#ffffff",
+          border: isSpeaking ? "none" : "2px solid #6BC30D",
+        }}
+        aria-label={isSpeaking ? "Stop voice guide" : "Play voice guide"}
+      >
+        {isSpeaking ? (
+          <motion.div
+            animate={{ scale: [1, 1.15, 1] }}
+            transition={{ repeat: Infinity, duration: 1.2 }}
+          >
+            <Volume2 className="w-5 h-5 text-white" />
+          </motion.div>
+        ) : (
+          <Volume2 className="w-5 h-5" style={{ color: dark ? "#ffffff" : "#6BC30D" }} />
+        )}
+      </motion.button>
+
+      {showHint && (
         <motion.div
-          animate={{ scale: [1, 1.15, 1] }}
-          transition={{ repeat: Infinity, duration: 1.2 }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed bottom-[7.5rem] right-4 z-50 px-3 py-1.5 rounded-lg shadow-md text-[12px] font-semibold"
+          style={{
+            backgroundColor: dark ? "rgba(255,255,255,0.2)" : "#f0fdf4",
+            color: dark ? "#ffffff" : "#15803d",
+            border: `1px solid ${dark ? "rgba(255,255,255,0.15)" : "#bbf7d0"}`,
+          }}
         >
-          <Volume2 className="w-5 h-5 text-white" />
+          Tap to hear instructions
         </motion.div>
-      ) : (
-        <Volume2 className="w-5 h-5" style={{ color: dark ? "#ffffff" : "#6BC30D" }} />
       )}
-    </motion.button>
+    </>
   );
 }
