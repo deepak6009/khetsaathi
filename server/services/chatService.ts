@@ -308,4 +308,35 @@ Write a concise summary in English. Just the summary text, nothing else.`;
   return result.response.text().trim();
 }
 
+export async function generatePlanSummaryMessage(
+  plan: string,
+  diagnosis: Record<string, any>,
+  language: string,
+): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const prompt = `You are KhetSathi, a kind elder farmer and crop doctor. The 7-day treatment plan has just been generated for the farmer.
+
+Plan content:
+${plan.substring(0, 2000)}
+
+Diagnosis:
+${JSON.stringify(diagnosis)}
+
+Write a SHORT summary message (3-4 sentences max) in ${language} that:
+1. Says "Here is your 7-day treatment plan" in ${language}
+2. Briefly mentions the disease name and the key treatment (main pesticide/action)
+3. Mentions one important thing from the plan (like Day 1 action or safety tip)
+4. Asks warmly if they have any questions or doubts
+
+CRITICAL RULES:
+- Respond ENTIRELY in ${language}. If Hindi, use pure Hindi (Devanagari). If Telugu, use pure Telugu script. No English mixing.
+- Keep it SHORT — this will be spoken aloud. Maximum 3-4 sentences.
+- Be warm and encouraging like a caring neighbor.
+- Just the message text, nothing else.`;
+
+  const result = await model.generateContent(prompt);
+  return result.response.text().trim();
+}
+
 export { getGreeting };

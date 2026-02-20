@@ -496,7 +496,8 @@ export default function Home() {
       setPlanLanguage(selectedLang);
       setPdfUrl(data.pdfUrl || null);
       setChatPhase("plan_ready");
-      setMessages((prev) => [...prev, { role: "assistant", content: labels.planReady[selectedLang] || labels.planReady.English }]);
+      const summaryMsg = data.planSummaryMessage || labels.planReady[selectedLang] || labels.planReady.English;
+      setMessages((prev) => [...prev, { role: "assistant", content: summaryMsg }]);
     } catch {
       toast({ title: "Plan generation failed", variant: "destructive" });
     } finally {

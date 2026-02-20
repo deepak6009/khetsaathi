@@ -29,7 +29,7 @@ LANGUAGE_MAP = {
 GATHERING_PROMPT = """You are KhetSathi — think of yourself as a kind, experienced elder farmer who also happens to be a crop doctor. You genuinely care about the farmer and their family. You speak like a neighbor having chai together, not like a doctor in a clinic.
 
 CRITICAL LANGUAGE RULE: You MUST respond ENTIRELY in {LANGUAGE}. Every single word must be in {LANGUAGE}. Do NOT mix English words or phrases.
-- If {LANGUAGE} is Hindi: Speak pure Hindi using Devanagari script. Say "टमाटर" not "tomato", "बीमारी" not "disease", "कीटनाशक" not "pesticide", "खेत" not "field", "सिंचाई" not "irrigation". Use everyday rural Hindi that a village farmer would use — simple words like "भाई", "जी", "अच्छा", "चलो". Avoid English completely.
+- If {LANGUAGE} is Hindi: Speak pure Hindi using Devanagari script. Say "टमाटर" not "tomato", "बीमारी" not "disease", "कीटनाशक" not "pesticide", "खेत" not "field", "सिंचाई" not "irrigation". Use everyday rural Hindi — simple words like "भाई", "जी", "अच्छा", "चलो". Avoid English completely.
 - If {LANGUAGE} is Telugu: Speak pure Telugu. Use words like "పంట", "వ్యాధి", "పురుగుమందు". Avoid English.
 - If {LANGUAGE} is English: Speak simple English.
 - If the farmer switches language mid-conversation, switch with them.
@@ -39,34 +39,32 @@ The farmer has uploaded photos of their sick crop. You need to understand their 
 CONVERSATION FLOW — follow this order. Ask ONLY ONE question per message:
 NOTE: The greeting and name question has ALREADY been spoken to the farmer. Do NOT repeat it. Start from their response.
 
+BASICS:
 1. (Already done) Greeting and asking their name.
 2. Which crop they are growing.
 3. Where is their farm (village or district).
+
+CROP STAGE:
 4. How long ago did they plant this crop?
-5. Is the plant small, medium, or fully grown? Flowers or fruits coming?
-6. What variety or hybrid? Where did seeds come from?
-7. How much field is affected — one corner or spread across?
-8. Is damage only on fruit, or spots on leaves and stems too?
-9. When did they first notice? Getting worse quickly or slowly?
-10. Do nearby farms have the same problem?
-11. What has weather been like — hot, humid, rainy?
-12. Heavy rain in last 7-10 days?
-13. How do they water — drip, sprinkler, flood, or rain-fed?
-14. When did they last water?
-15. Is water standing in the field or soil stays wet?
-16. What color is soil — red, black, brown, sandy?
-17. Is soil hard or soft?
-18. What was grown last season?
-19. Have they applied fertilizer? Which one, when?
-20. Have they sprayed any pesticide or fungicide? Which one?
+
+SCOPE OF THE PROBLEM:
+5. How much of the field is affected — just one corner, or spread across the field?
+
+WEATHER:
+6. Is there any rain fall in the last 24 hours?
+
+CROP HISTORY:
+7. Have they applied any fertilizer? Which one — Urea, DAP, organic manure? When?
+8. Have they sprayed any pesticide or fungicide already? Which one?
 
 HOW TO TALK:
 - Ask ONLY ONE question per message. Never two. Never a list.
-- After the farmer answers, warmly acknowledge what they said before asking the next thing.
-- Sound like a caring village elder — use "ji", "bhai", or respectful forms of address natural to {LANGUAGE}.
-- Keep each message to 1-2 short sentences only. This is VOICE conversation so be brief.
-- If the farmer already mentioned something, don't ask again.
-- Be warm, patient, encouraging.
+- After the farmer answers, warmly acknowledge what they said before asking the next thing. For example: "Ah, tomatoes! Good crop." or "I see, that helps me understand."
+- Sound like a caring person, not a form or a survey. Weave the question into natural speech.
+- Keep each message to 1-2 short sentences only. This is VOICE conversation so be very brief.
+- If the farmer already mentioned something, don't ask again — just move to the next topic.
+- Never say "Phase" or "Step" or number your questions. It should feel like a flowing conversation.
+- Be warm, patient, encouraging. Use phrases like "Don't worry", "We'll figure this out together".
 - NEVER use technical English terms when speaking Hindi or Telugu. Always use the native word."""
 
 DIAGNOSIS_PROMPT = """You are KhetSathi — a kind, experienced elder farmer and crop doctor.
@@ -77,11 +75,23 @@ CRITICAL LANGUAGE RULE: You MUST respond ENTIRELY in {LANGUAGE}. Do NOT use Engl
 You have received disease diagnosis results:
 {DIAGNOSIS}
 
-Share the diagnosis briefly in 1-2 sentences: name the disease in {LANGUAGE} and one immediate action. Be reassuring — say the equivalent of "Don't worry, we can manage this" in {LANGUAGE}.
+IMPORTANT: A diagnosis message with the disease name has ALREADY been spoken to the farmer by the system. Do NOT repeat the diagnosis again. The farmer already knows the disease name.
 
-Then continue asking remaining questions ONE per message, conversationally. After ALL questions are answered, offer to prepare a detailed 7-day treatment plan.
+YOUR JOB NOW:
+1. Ask 1-2 quick follow-up questions (only the ones NOT already answered in the conversation):
+   - Have they used any fertilizer? Which one?
+   - Have they sprayed any pesticide already?
+2. After getting answers (or if the farmer seems eager to proceed), CLEARLY offer the 7-day treatment plan. Say something like:
+   - Hindi: "क्या आप चाहेंगे कि मैं आपके लिए 7 दिन की पूरी उपचार योजना बनाऊं?"
+   - Telugu: "మీ కోసం 7 రోజుల చికిత్స ప్రణాళిక తయారు చేయమంటారా?"
+   - English: "Would you like me to prepare a detailed 7-day treatment plan for you?"
+3. If the farmer says YES, respond with ONLY: "बहुत अच्छा, मैं आपकी योजना तैयार कर रहा हूँ!" (or equivalent in their language). Do NOT generate the plan yourself.
 
-CRITICAL: If farmer says YES to plan, ONLY say a short acknowledgment. Do NOT write out the plan yourself. Keep it brief — this is voice conversation."""
+RULES:
+- Keep each message SHORT (1-2 sentences). ONE question per message. This is VOICE.
+- Be warm and encouraging. Sound like a caring neighbor.
+- If the farmer asks about the disease, answer briefly, then move to offering the plan.
+- Do NOT repeat the disease name or diagnosis — it was already shared."""
 
 PLAN_DONE_PROMPT = """You are KhetSathi — a kind elder farmer and crop doctor.
 CRITICAL: Respond ENTIRELY in {LANGUAGE}. No English words when speaking Hindi or Telugu.
@@ -166,6 +176,9 @@ class KhetSaathiAgent(Agent):
         if self.message_count >= 2 and not self.extracted_crop and not self.diagnosis_in_progress:
             asyncio.create_task(self._run_extraction())
 
+        if self.diagnosis and not self.plan_generated:
+            asyncio.create_task(self._check_plan_intent())
+
     async def _run_extraction(self):
         try:
             messages = self._conversation_history.copy()
@@ -219,10 +232,122 @@ class KhetSaathiAgent(Agent):
 
                         await self.update_instructions(new_instructions)
                         logger.info("Updated agent instructions with diagnosis results")
+
+                        diagnosis_msg = await self._build_diagnosis_message()
+                        if diagnosis_msg:
+                            self._conversation_history.append({"role": "assistant", "content": diagnosis_msg})
+                            self.session.say(diagnosis_msg, add_to_chat_ctx=True)
+                            logger.info("Spoke diagnosis results to farmer")
         except Exception as e:
             logger.error(f"Diagnosis error: {e}")
         finally:
             self.diagnosis_in_progress = False
+
+    async def _build_diagnosis_message(self) -> str:
+        if not self.diagnosis:
+            return ""
+        disease = self.diagnosis.get("disease", "")
+        recommended_pesticide = self.diagnosis.get("recommended_pesticide", "")
+        immediate_action = self.diagnosis.get("immediate_action", "")
+
+        try:
+            from google import genai
+            api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
+            client = genai.Client(api_key=api_key)
+            prompt = f"""Generate a SHORT diagnosis message (2-3 sentences max) in {self.user_language} for a farmer.
+Disease: {disease}
+Recommended pesticide: {recommended_pesticide}
+Immediate action: {immediate_action}
+
+Rules:
+1) Name the disease in {self.user_language} — translate the disease name fully (e.g. "Early Blight" becomes "झुलसा रोग" in Hindi, "ముందస్తు ఎండు తెగులు" in Telugu)
+2) Mention the recommended pesticide name (pesticide brand names can stay as-is)
+3) Tell ONE immediate thing to do in simple words
+4) Say something encouraging like "Don't worry, we can treat this together"
+5) Do NOT use English words for disease, symptoms, or actions. Only pesticide brand names can be in English.
+6) Keep it SHORT — this will be spoken aloud in a voice conversation.
+7) Be warm like a caring elder farmer neighbor.
+8) Just return the message text, nothing else."""
+
+            response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+            msg = response.text.strip()
+            if msg:
+                logger.info(f"Generated localized diagnosis message: {msg[:50]}...")
+                return msg
+        except Exception as e:
+            logger.error(f"Failed to generate localized diagnosis message: {e}")
+
+        if self.user_language == "Hindi":
+            return "आपकी फसल में बीमारी मिली है। चिंता मत करिए, हम इसका इलाज कर सकते हैं! कुछ और सवाल पूछकर मैं आपको पूरी योजना बनाकर दूँगा।"
+        elif self.user_language == "Telugu":
+            return "మీ పంటలో వ్యాధి కనుగొనబడింది. చింతించకండి, మనం దీన్ని నయం చేయగలం! కొన్ని ప్రశ్నలు అడిగి పూర్తి ప్రణాళిక తయారు చేస్తాను."
+        else:
+            return f"I've found the issue with your crop — it's {disease}. Don't worry, we can treat this together! Let me ask a few more questions to prepare a complete plan for you."
+
+    async def _check_plan_intent(self):
+        try:
+            messages = self._conversation_history.copy()
+            if len(messages) < 4:
+                return
+
+            async with aiohttp.ClientSession() as http_session:
+                async with http_session.post(
+                    f"{BACKEND_URL}/api/chat/detect-plan-intent",
+                    json={"messages": messages},
+                    timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        if data.get("wantsPlan") and not self.plan_generated:
+                            logger.info("Farmer wants treatment plan, generating...")
+                            await self._generate_plan()
+        except Exception as e:
+            logger.error(f"Plan intent check error: {e}")
+
+    async def _generate_plan(self):
+        if self.plan_generated:
+            return
+        self.plan_generated = True
+        try:
+            async with aiohttp.ClientSession() as http_session:
+                async with http_session.post(
+                    f"{BACKEND_URL}/api/chat/generate-plan",
+                    json={
+                        "messages": self._conversation_history,
+                        "diagnosis": self.diagnosis,
+                        "language": self.user_language,
+                        "imageUrls": self.image_urls,
+                        "phone": self.phone,
+                    },
+                    timeout=aiohttp.ClientTimeout(total=60)
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        plan_summary = data.get("planSummaryMessage", "")
+                        logger.info("Plan generated successfully")
+
+                        new_instructions = PLAN_DONE_PROMPT.replace("{LANGUAGE}", self.user_language)
+                        await self.update_instructions(new_instructions)
+
+                        if plan_summary:
+                            self._conversation_history.append({"role": "assistant", "content": plan_summary})
+                            self.session.say(plan_summary, add_to_chat_ctx=True)
+                            logger.info("Spoke plan summary to farmer")
+                        else:
+                            fallback = self._get_plan_fallback()
+                            self._conversation_history.append({"role": "assistant", "content": fallback})
+                            self.session.say(fallback, add_to_chat_ctx=True)
+        except Exception as e:
+            logger.error(f"Plan generation error: {e}")
+            self.plan_generated = False
+
+    def _get_plan_fallback(self) -> str:
+        if self.user_language == "Hindi":
+            return "आपकी 7 दिन की उपचार योजना तैयार है! इसमें आपकी फसल के इलाज की पूरी जानकारी है। कोई सवाल हो तो पूछिए।"
+        elif self.user_language == "Telugu":
+            return "మీ 7 రోజుల చికిత్స ప్రణాళిక సిద్ధంగా ఉంది! దీనిలో మీ పంట చికిత్స వివరాలు ఉన్నాయి. ఏవైనా సందేహాలు ఉంటే అడగండి."
+        else:
+            return "Your 7-day treatment plan is ready! It has all the details for treating your crop. Feel free to ask if you have any questions."
 
 
 async def entrypoint(ctx: JobContext):

@@ -4,7 +4,7 @@ import multer from "multer";
 import sharp from "sharp";
 import { uploadToS3 } from "./services/s3Service";
 import { detectDisease } from "./services/diseaseService";
-import { generateChatReply, extractCropAndLocation, detectPlanIntent, generateConversationalPlan, generateConversationSummary, getGreeting, type ChatMessage } from "./services/chatService";
+import { generateChatReply, extractCropAndLocation, detectPlanIntent, generateConversationalPlan, generateConversationSummary, generatePlanSummaryMessage, getGreeting, type ChatMessage } from "./services/chatService";
 import { saveUserToDynamo, saveUserCase, saveChatSummary, getChatSummaries, getUserCases, updateUserProfileImage, getUserFromDynamo } from "./services/dynamoService";
 import { generatePdf } from "./services/pdfService";
 import { uploadPdfToS3 } from "./services/s3Service";
@@ -287,6 +287,14 @@ export async function registerRoutes(
         log(`PDF generation/upload error: ${pdfErr.message}`);
       }
 
+      let planSummaryMsg = "";
+      try {
+        planSummaryMsg = await generatePlanSummaryMessage(plan, diagnosis, language);
+        log("Plan summary message generated");
+      } catch (summaryMsgErr: any) {
+        log(`Plan summary message error: ${summaryMsgErr.message}`);
+      }
+
       try {
         const conversationSummary = await generateConversationSummary(messages, diagnosis);
         await saveChatSummary({
@@ -303,7 +311,7 @@ export async function registerRoutes(
         log(`Chat summary save error: ${summaryErr.message}`);
       }
 
-      return res.json({ plan, pdfUrl });
+      return res.json({ plan, pdfUrl, planSummaryMessage: planSummaryMsg });
     } catch (error: any) {
       log(`Generate plan error: ${error.message}`);
       return res.status(500).json({ message: "Plan generation failed" });
