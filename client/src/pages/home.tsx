@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   X, Camera, Phone as PhoneIcon, ArrowRight,
   Check, Send, Bot, Languages, FileText, Download, Mic, MapPin,
-  RotateCcw, ChevronLeft, Plus, Leaf, Clock, LogOut,
+  RotateCcw, ChevronLeft, Plus, Leaf, Clock, LogOut, Monitor,
   ScanLine, CalendarDays, Sprout, ChevronRight, Loader2, Shield, Sparkles, User
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -917,7 +917,7 @@ export default function Home() {
         {onboardingStep === "selfie" && <VoiceGuideButton screen="photo" language={language} />}
         {onboardingStep === "welcome" && <VoiceGuideButton screen="welcome" language={language} />}
 
-        <footer className="mt-auto">
+        <footer className="mt-auto pb-[120px]">
           <div className="max-w-lg mx-auto px-4 py-4 text-center text-xs text-gray-500 font-medium">
             KhetSaathi &middot; {getLabel("footer")}
           </div>
@@ -1070,9 +1070,20 @@ export default function Home() {
 
         <VoiceGuideButton screen="dashboard" language={language} />
 
-        <footer className="mt-auto">
-          <div className="max-w-lg mx-auto px-4 py-4 text-center text-xs text-gray-500 font-medium">
-            KhetSaathi &middot; {getLabel("footer")}
+        <footer className="mt-auto pb-[130px]">
+          <div className="max-w-lg mx-auto px-4 py-4 flex flex-col items-center gap-2">
+            <Link href="/kiosk">
+              <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 active:scale-[0.98] transition-transform" data-testid="button-kiosk-preview">
+                <Monitor className="w-4 h-4 text-gray-500" />
+                <span className="text-[13px] font-semibold text-gray-600">
+                  {language === "Telugu" ? "కియోస్క్ మోడ్ చూడండి" : language === "Hindi" ? "कियोस्क मोड देखें" : "Preview Kiosk Mode"}
+                </span>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+              </button>
+            </Link>
+            <span className="text-xs text-gray-500 font-medium">
+              KhetSaathi &middot; {getLabel("footer")}
+            </span>
           </div>
         </footer>
       </div>
@@ -1152,6 +1163,7 @@ export default function Home() {
               )}
             </Button>
           </div>
+          <div className="pb-[140px]" />
         </main>
         <VoiceGuideButton screen="capture" language={language} />
       </div>
@@ -1321,6 +1333,13 @@ export default function Home() {
 
         {isVoiceActive && (
           <div className="border-t border-gray-100 bg-white">
+            <div className="flex items-center justify-center gap-2 px-4 pt-2.5 pb-0">
+              <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ repeat: Infinity, duration: 1.5 }} className="w-2 h-2 rounded-full" style={{ backgroundColor: "#6BC30D" }} />
+              <span className="text-[12px] font-bold uppercase tracking-widest" style={{ color: "#6BC30D" }}>
+                {language === "Telugu" ? "ప్రత్యక్ష ట్రాన్స్‌క్రిప్షన్" : language === "Hindi" ? "लाइव ट्रांसक्रिप्शन" : "Live Transcription"}
+              </span>
+              <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.5 }} className="w-2 h-2 rounded-full" style={{ backgroundColor: "#6BC30D" }} />
+            </div>
             <VoiceChat phone={phoneNumber} language={language} imageUrls={imageUrls} chatHistory={messages} onClose={() => setIsVoiceActive(false)} onTranscript={handleVoiceTranscript} />
           </div>
         )}
@@ -1352,7 +1371,6 @@ export default function Home() {
           </div>
         </div>
       </main>
-      <VoiceGuideButton screen="chat" language={language} />
     </div>
   );
 }
