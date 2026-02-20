@@ -75,18 +75,23 @@ CRITICAL LANGUAGE RULE: You MUST respond ENTIRELY in {LANGUAGE}. Do NOT use Engl
 You have received disease diagnosis results:
 {DIAGNOSIS}
 
-You now know what the disease is. But you MUST continue gathering the remaining mandatory information before offering any plan. Look at the conversation history and figure out which of these have NOT been covered yet:
-- Have they applied any fertilizer? Which one, and when?
-- Have they sprayed any pesticide or fungicide already? Which one?
+IMPORTANT: A diagnosis message with the disease name has ALREADY been spoken to the farmer by the system. Do NOT repeat the diagnosis again. The farmer already knows the disease name.
 
-HOW TO BEHAVE:
-- When you FIRST share the diagnosis, do it briefly in 1-2 sentences: name the disease and one immediate thing they can do. Be reassuring — "Don't worry, we can manage this."
-- Then smoothly continue asking the remaining questions — ONE per message, conversationally.
-- If the farmer asks questions about the disease, answer them briefly, then get back to gathering info.
-- After ALL mandatory questions are answered, THEN gently offer to prepare a detailed 7-day treatment plan.
-- Do NOT offer the plan until you have gathered ALL the remaining info above.
-- Keep each message SHORT (1-2 sentences). ONE question per message only. This is VOICE conversation so be very brief.
-- CRITICAL: If the farmer says YES to the plan, ONLY say a short acknowledgment like "Great, let me prepare that for you!" Do NOT generate the actual plan yourself."""
+YOUR JOB NOW:
+1. Ask 1-2 quick follow-up questions (only the ones NOT already answered in the conversation):
+   - Have they used any fertilizer? Which one?
+   - Have they sprayed any pesticide already?
+2. After getting answers (or if the farmer seems eager to proceed), CLEARLY offer the 7-day treatment plan. Say something like:
+   - Hindi: "क्या आप चाहेंगे कि मैं आपके लिए 7 दिन की पूरी उपचार योजना बनाऊं?"
+   - Telugu: "మీ కోసం 7 రోజుల చికిత్స ప్రణాళిక తయారు చేయమంటారా?"
+   - English: "Would you like me to prepare a detailed 7-day treatment plan for you?"
+3. If the farmer says YES, respond with ONLY: "बहुत अच्छा, मैं आपकी योजना तैयार कर रहा हूँ!" (or equivalent in their language). Do NOT generate the plan yourself.
+
+RULES:
+- Keep each message SHORT (1-2 sentences). ONE question per message. This is VOICE.
+- Be warm and encouraging. Sound like a caring neighbor.
+- If the farmer asks about the disease, answer briefly, then move to offering the plan.
+- Do NOT repeat the disease name or diagnosis — it was already shared."""
 
 PLAN_DONE_PROMPT = """You are KhetSathi — a kind elder farmer and crop doctor.
 CRITICAL: Respond ENTIRELY in {LANGUAGE}. No English words when speaking Hindi or Telugu.
@@ -228,7 +233,7 @@ class KhetSaathiAgent(Agent):
                         await self.update_instructions(new_instructions)
                         logger.info("Updated agent instructions with diagnosis results")
 
-                        diagnosis_msg = self._build_diagnosis_message()
+                        diagnosis_msg = await self._build_diagnosis_message()
                         if diagnosis_msg:
                             self._conversation_history.append({"role": "assistant", "content": diagnosis_msg})
                             self.session.say(diagnosis_msg, add_to_chat_ctx=True)
@@ -238,42 +243,46 @@ class KhetSaathiAgent(Agent):
         finally:
             self.diagnosis_in_progress = False
 
-    def _build_diagnosis_message(self) -> str:
+    async def _build_diagnosis_message(self) -> str:
         if not self.diagnosis:
             return ""
         disease = self.diagnosis.get("disease", "")
-        symptoms = self.diagnosis.get("symptoms_observed", "")
+        recommended_pesticide = self.diagnosis.get("recommended_pesticide", "")
         immediate_action = self.diagnosis.get("immediate_action", "")
-        severity = self.diagnosis.get("severity", "")
+
+        try:
+            from google import genai
+            api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
+            client = genai.Client(api_key=api_key)
+            prompt = f"""Generate a SHORT diagnosis message (2-3 sentences max) in {self.user_language} for a farmer.
+Disease: {disease}
+Recommended pesticide: {recommended_pesticide}
+Immediate action: {immediate_action}
+
+Rules:
+1) Name the disease in {self.user_language} — translate the disease name fully (e.g. "Early Blight" becomes "झुलसा रोग" in Hindi, "ముందస్తు ఎండు తెగులు" in Telugu)
+2) Mention the recommended pesticide name (pesticide brand names can stay as-is)
+3) Tell ONE immediate thing to do in simple words
+4) Say something encouraging like "Don't worry, we can treat this together"
+5) Do NOT use English words for disease, symptoms, or actions. Only pesticide brand names can be in English.
+6) Keep it SHORT — this will be spoken aloud in a voice conversation.
+7) Be warm like a caring elder farmer neighbor.
+8) Just return the message text, nothing else."""
+
+            response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+            msg = response.text.strip()
+            if msg:
+                logger.info(f"Generated localized diagnosis message: {msg[:50]}...")
+                return msg
+        except Exception as e:
+            logger.error(f"Failed to generate localized diagnosis message: {e}")
 
         if self.user_language == "Hindi":
-            msg = f"आपकी फसल की तस्वीरें देखकर पता चला है कि यह {disease} बीमारी है।"
-            if severity:
-                msg += f" इसकी गंभीरता {severity} स्तर की है।"
-            if symptoms:
-                msg += f" लक्षण: {symptoms}।"
-            if immediate_action:
-                msg += f" तुरंत यह करें: {immediate_action}।"
-            msg += " चिंता मत करिए, हम इसका इलाज कर सकते हैं!"
+            return "आपकी फसल में बीमारी मिली है। चिंता मत करिए, हम इसका इलाज कर सकते हैं! कुछ और सवाल पूछकर मैं आपको पूरी योजना बनाकर दूँगा।"
         elif self.user_language == "Telugu":
-            msg = f"మీ పంట ఫోటోలు చూసి తెలిసింది, ఇది {disease} వ్యాధి."
-            if severity:
-                msg += f" తీవ్రత {severity} స్థాయిలో ఉంది."
-            if symptoms:
-                msg += f" లక్షణాలు: {symptoms}."
-            if immediate_action:
-                msg += f" వెంటనే చేయండి: {immediate_action}."
-            msg += " చింతించకండి, మనం దీన్ని నయం చేయగలం!"
+            return "మీ పంటలో వ్యాధి కనుగొనబడింది. చింతించకండి, మనం దీన్ని నయం చేయగలం! కొన్ని ప్రశ్నలు అడిగి పూర్తి ప్రణాళిక తయారు చేస్తాను."
         else:
-            msg = f"After looking at your crop photos, I can see this is {disease}."
-            if severity:
-                msg += f" The severity is {severity}."
-            if symptoms:
-                msg += f" I can see {symptoms}."
-            if immediate_action:
-                msg += f" As an immediate step, {immediate_action}."
-            msg += " Don't worry, we can manage this together!"
-        return msg
+            return f"I've found the issue with your crop — it's {disease}. Don't worry, we can treat this together! Let me ask a few more questions to prepare a complete plan for you."
 
     async def _check_plan_intent(self):
         try:
