@@ -162,7 +162,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/upload-images", upload.array("images", 6), async (req, res) => {
+  app.post("/api/upload-images", upload.array("images", 3), async (req, res) => {
     try {
       const files = req.files as Express.Multer.File[];
       const phone = req.body.phone;

@@ -69,6 +69,11 @@ You have received disease diagnosis results from analyzing the farmer's crop pho
 Diagnosis data: {DIAGNOSIS}
 
 You now know what the disease is. But you MUST continue gathering the remaining mandatory information before offering any plan. Look at the conversation history and figure out which of these have NOT been covered yet:
+
+MANDATORY QUESTIONS STILL TO COVER (skip any already answered — ask ONE per message):
+- How much of the field is affected — just one corner or spread across?
+- When did they first notice the problem? Getting worse quickly or slowly?
+- What was grown in this field last season?
 - Have they applied any fertilizer? Which one, and when?
 - Have they sprayed any pesticide or fungicide already? Which one?
 
