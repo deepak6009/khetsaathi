@@ -1262,7 +1262,7 @@ export default function Home() {
 
         {isVoiceActive && (
           <div className="border-t border-gray-100 bg-white">
-            <VoiceChat phone={phoneNumber} language={language} imageUrls={imageUrls} onClose={() => setIsVoiceActive(false)} onTranscript={handleVoiceTranscript} />
+            <VoiceChat phone={phoneNumber} language={language} imageUrls={imageUrls} chatHistory={messages} onClose={() => setIsVoiceActive(false)} onTranscript={handleVoiceTranscript} />
           </div>
         )}
 

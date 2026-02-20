@@ -93,7 +93,7 @@ Keep responses short (1-2 sentences). Stay warm and neighborly. This is a voice 
 
 
 class KhetSaathiAgent(Agent):
-    def __init__(self, language: str, image_urls: list, phone: str):
+    def __init__(self, language: str, image_urls: list, phone: str, chat_history: list[dict] | None = None):
         self.user_language = language
         self.image_urls = image_urls
         self.phone = phone
@@ -103,15 +103,39 @@ class KhetSaathiAgent(Agent):
         self.diagnosis_in_progress = False
         self.plan_generated = False
         self.message_count = 0
-        self._conversation_history: list[dict] = []
+        self._conversation_history: list[dict] = chat_history[:] if chat_history else []
+        self._has_prior_history = bool(chat_history and len(chat_history) > 0)
+
+        if self._has_prior_history:
+            self.message_count = sum(1 for m in self._conversation_history if m.get("role") == "user")
 
         instructions = GATHERING_PROMPT.replace("{LANGUAGE}", language)
+        if self._has_prior_history:
+            history_summary = "\n".join(
+                f"{'Farmer' if m['role'] == 'user' else 'You'}: {m['content']}"
+                for m in self._conversation_history[-10:]
+            )
+            instructions += f"\n\nIMPORTANT: This is a CONTINUING conversation. The farmer switched from text to voice. Here is the recent conversation so far:\n{history_summary}\n\nDo NOT repeat the greeting. Do NOT ask questions already answered. Continue naturally from where the conversation left off. Acknowledge the switch briefly and continue with the next unanswered question."
+
         super().__init__(instructions=instructions)
 
     async def on_enter(self):
-        greeting = self._get_greeting()
-        self._conversation_history.append({"role": "assistant", "content": greeting})
-        self.session.say(greeting, add_to_chat_ctx=True)
+        if self._has_prior_history:
+            resume_msg = self._get_resume_message()
+            self._conversation_history.append({"role": "assistant", "content": resume_msg})
+            self.session.say(resume_msg, add_to_chat_ctx=True)
+        else:
+            greeting = self._get_greeting()
+            self._conversation_history.append({"role": "assistant", "content": greeting})
+            self.session.say(greeting, add_to_chat_ctx=True)
+
+    def _get_resume_message(self) -> str:
+        if self.user_language == "Telugu":
+            return "హా జీ, నేను ఇక్కడ ఉన్నాను. మన మాటలు కొనసాగిద్దాం."
+        elif self.user_language == "Hindi":
+            return "हाँ जी, मैं यहाँ हूँ। चलिए बात आगे बढ़ाते हैं।"
+        else:
+            return "Yes, I'm here. Let's continue our conversation."
 
     def _get_greeting(self) -> str:
         if self.user_language == "Telugu":
@@ -216,6 +240,7 @@ async def entrypoint(ctx: JobContext):
     language = metadata.get("language", "English")
     phone = metadata.get("phone", "")
     image_urls = metadata.get("imageUrls", [])
+    chat_history = metadata.get("chatHistory", [])
 
     lang_config = LANGUAGE_MAP.get(language, LANGUAGE_MAP["English"])
 
@@ -249,6 +274,7 @@ async def entrypoint(ctx: JobContext):
         language=language,
         image_urls=image_urls,
         phone=phone,
+        chat_history=chat_history,
     )
 
     await session.start(

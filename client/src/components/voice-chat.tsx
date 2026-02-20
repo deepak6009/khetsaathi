@@ -22,6 +22,7 @@ interface VoiceChatProps {
   phone: string;
   language: string;
   imageUrls: string[];
+  chatHistory?: ChatMessage[];
   onClose: () => void;
   onTranscript?: (message: ChatMessage) => void;
 }
@@ -143,7 +144,7 @@ function VoiceAssistantUI({
   );
 }
 
-export default function VoiceChat({ phone, language, imageUrls, onClose, onTranscript }: VoiceChatProps) {
+export default function VoiceChat({ phone, language, imageUrls, chatHistory, onClose, onTranscript }: VoiceChatProps) {
   const [connectionDetails, setConnectionDetails] = useState<{
     token: string;
     url: string;
@@ -174,7 +175,7 @@ export default function VoiceChat({ phone, language, imageUrls, onClose, onTrans
         const resp = await fetch("/api/livekit/token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone, language, imageUrls }),
+          body: JSON.stringify({ phone, language, imageUrls, chatHistory: chatHistory || [] }),
         });
         if (cancelled) return;
         if (!resp.ok) {

@@ -373,13 +373,14 @@ export async function registerRoutes(
         phone: z.string().min(10),
         language: z.string(),
         imageUrls: z.array(z.string()),
+        chatHistory: z.array(z.object({ role: z.string(), content: z.string() })).optional().default([]),
       });
       const validation = schema.safeParse(req.body);
       if (!validation.success) {
         return res.status(400).json({ message: validation.error.errors.map(e => e.message).join(", ") });
       }
 
-      const { phone, language, imageUrls } = validation.data;
+      const { phone, language, imageUrls, chatHistory } = validation.data;
 
       const apiKey = process.env.LIVEKIT_API_KEY;
       const apiSecret = process.env.LIVEKIT_API_SECRET;
@@ -389,9 +390,10 @@ export async function registerRoutes(
         return res.status(500).json({ message: "LiveKit not configured" });
       }
 
+      const recentHistory = chatHistory.slice(-20);
       const roomName = `khetsaathi-${phone}-${Date.now()}`;
       const participantIdentity = `farmer-${phone}`;
-      const roomMetadata = JSON.stringify({ phone, language, imageUrls });
+      const roomMetadata = JSON.stringify({ phone, language, imageUrls, chatHistory: recentHistory });
 
       const roomService = new RoomServiceClient(livekitUrl, apiKey, apiSecret);
       await roomService.createRoom({
