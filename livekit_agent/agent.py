@@ -6,12 +6,14 @@ import aiohttp
 from dotenv import load_dotenv
 from livekit import agents
 from livekit.agents import Agent, AgentSession, JobContext
-from livekit.plugins import sarvam, google
+from livekit.plugins import sarvam, google, silero
 
 load_dotenv()
 
-if not os.environ.get("GOOGLE_API_KEY") and os.environ.get("GEMINI_API_KEY"):
-    os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
+if not os.environ.get("GOOGLE_API_KEY"):
+    gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    if gemini_key:
+        os.environ["GOOGLE_API_KEY"] = gemini_key
 
 logger = logging.getLogger("khetsaathi-agent")
 logger.setLevel(logging.INFO)
@@ -252,7 +254,7 @@ async def entrypoint(ctx: JobContext):
             pace=0.9,
             enable_preprocessing=True,
         ),
-        turn_detection=agents.turn_detector.EOUModel(),
+        vad=silero.VAD.load(),
     )
 
     agent = KhetSaathiAgent(
