@@ -45,14 +45,16 @@ Agricultural AI assistant where farmers upload crop images and receive disease d
 ## Project Structure
 - `client/src/pages/home.tsx` - Main app with 4 screens: onboarding, dashboard, capture, chat
 - `client/src/pages/history.tsx` - Full diagnosis history page
-- `client/src/components/voice-chat.tsx` - LiveKit voice chat component
+- `client/src/components/voice-chat.tsx` - WebSocket-based voice chat with Web Audio API VAD
 - `client/src/components/treatment-plan.tsx` - Legacy treatment plan display
 - `server/routes.ts` - API endpoints (10+ endpoints)
 - `server/services/chatService.ts` - Gemini-powered conversational AI
 - `server/services/dynamoService.ts` - DynamoDB storage
 - `server/services/s3Service.ts` - AWS S3 upload service
+- `server/services/voiceService.ts` - Google Cloud STT and TTS REST API service
 - `server/services/pdfService.ts` - Server-side PDF generation
 - `server/services/diseaseService.ts` - Disease detection API proxy
+- `server/voice-handler.ts` - WebSocket voice handler with session management
 - `shared/schema.ts` - Zod schemas + TypeScript types
 
 ## API Endpoints
@@ -75,16 +77,16 @@ Agricultural AI assistant where farmers upload crop images and receive disease d
 - **usercases** (region: ap-south-1): PK=phone, SK=timestamp, Attributes: conversationSummary, diagnosis, treatmentPlan, language, imageUrls
 - **chatsummary** (region: ap-south-1): PK=phone, SK=timestamp, Attributes: conversationSummary, pdfUrl, language, diagnosis, imageUrls
 
-## Voice Integration (LiveKit)
-- **LiveKit Agent**: `server/livekit-agent.ts` - Standalone voice agent using Gemini Realtime API
-- **Frontend Component**: `client/src/components/voice-chat.tsx` - LiveKit room with voice UI
-- **Token Endpoint**: `POST /api/livekit/token` - Generates LiveKit access tokens
-- **Agent runs as separate process**: `npx tsx server/livekit-agent.ts dev`
+## Voice Integration (Google Cloud STT/TTS via WebSocket)
+- **Voice Handler**: `server/voice-handler.ts` - WebSocket server at /ws/voice with session management, conversation state, background agents
+- **Voice Service**: `server/services/voiceService.ts` - Google Cloud Speech-to-Text (REST recognize) and Text-to-Speech (REST synthesize) APIs
+- **Frontend Component**: `client/src/components/voice-chat.tsx` - Web Audio API with client-side VAD, MediaRecorder for audio capture, WebSocket for transport
+- **Flow**: Frontend captures audio → WebSocket sends audio chunks → Backend calls Google STT → Transcript sent to Gemini → Response synthesized via Google TTS → Audio streamed back to client
 
 ## Environment Variables (Secrets)
 - AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET_NAME, CLOUDFRONT_URL
 - GEMINI_API_KEY
-- LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL
+- GOOGLE_CLOUD_API_KEY (for Speech-to-Text and Text-to-Speech)
 - SESSION_SECRET
 - DATABASE_URL (auto-configured, PostgreSQL)
 

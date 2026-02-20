@@ -1,0 +1,367 @@
+***
+
+title: Build Your First Voice Agent using LiveKit
+description: >-
+A beginner-friendly guide to building a real-time voice agent using LiveKit
+and Sarvam AI. Support for 11 languages (10 Indian + English) with natural
+voices and multilingual conversations.
+canonical-url: >-
+[https://docs.sarvam.ai/api-reference-docs/cookbook/Starter\_Notebook/Voice\_Agent\_LiveKit](https://docs.sarvam.ai/api-reference-docs/cookbook/Starter_Notebook/Voice_Agent_LiveKit)
+'og:title': Build Your First Voice Agent using LiveKit
+'og:description': >-
+Step-by-step guide to build a real-time voice agent using LiveKit and Sarvam
+AI. Support for 11 languages (10 Indian + English), natural voices, and
+multilingual conversations.
+'og:type': article
+'og:site\_name': Sarvam AI Developer Documentation
+'og:image':
+type: url
+value: >-
+[https://res.cloudinary.com/dvcb20x9a/image/upload/v1743510800/image\_3\_rpnrug.png](https://res.cloudinary.com/dvcb20x9a/image/upload/v1743510800/image_3_rpnrug.png)
+'og:image:width': 1200
+'og:image:height': 630
+'twitter:card': summary\_large\_image
+'twitter:title': Build Your First Voice Agent using LiveKit
+'twitter:description': >-
+Step-by-step guide to build a real-time voice agent using LiveKit and Sarvam
+AI. Support for 11 languages (10 Indian + English), natural voices, and
+multilingual conversations.
+'twitter:image':
+type: url
+value: >-
+[https://res.cloudinary.com/dvcb20x9a/image/upload/v1743510800/image\_3\_rpnrug.png](https://res.cloudinary.com/dvcb20x9a/image/upload/v1743510800/image_3_rpnrug.png)
+'twitter:site': '@SarvamAI'
+---------------------------
+
+## Overview
+
+This guide demonstrates how to build a **real-time voice agent** that can listen, understand, and respond naturally using **LiveKit** for real-time communication and **Sarvam AI** for speech processing. Perfect for building voice assistants, customer support bots, and conversational AI applications for Indian languages.
+
+## What You'll Build
+
+A voice agent that can:
+
+* Listen to users speaking (in multiple Indian languages!)
+* Understand and process their requests
+* Respond back in natural-sounding voices
+
+## Quick Overview
+
+1. Get API keys (LiveKit, Sarvam, OpenAI)
+2. Install packages: `pip install livekit-agents[sarvam,openai,silero] python-dotenv`
+3. Create `.env` file with your API keys
+4. Write \~40 lines of Python code
+5. Run: `python agent.py dev`
+6. Test: `python agent.py console`
+
+***
+
+## Quick Start
+
+### 1. Prerequisites
+
+* Python 3.9 or higher
+* API keys from:
+  * [LiveKit Cloud](https://cloud.livekit.io) (free account)
+  * [Sarvam AI](https://dashboard.sarvam.ai) (get API key from dashboard)
+  * [OpenAI](https://platform.openai.com/api-keys) (create new secret key)
+
+### 2. Install Dependencies
+
+<Tabs>
+  <Tab title="macOS/Linux">
+    ```bash
+    pip install "livekit-agents[sarvam,openai,silero]" python-dotenv
+    ```
+  </Tab>
+
+  <Tab title="Windows">
+    ```bash
+    pip install livekit-agents[sarvam,openai,silero] python-dotenv
+    ```
+  </Tab>
+</Tabs>
+
+### 3. Create Environment File
+
+Create a file named `.env` in your project folder and add your API keys:
+
+```env
+LIVEKIT_URL=wss://your-project-xxxxx.livekit.cloud
+LIVEKIT_API_KEY=APIxxxxxxxxxxxxx
+LIVEKIT_API_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SARVAM_API_KEY=sk_xxxxxxxxxxxxxxxxxxxxxxxx
+OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxx
+```
+
+Replace the values with your actual API keys.
+
+### 4. Write Your Agent
+
+Create `agent.py`:
+
+```python
+import logging
+from dotenv import load_dotenv
+from livekit.agents import JobContext, WorkerOptions, cli
+from livekit.agents.voice import Agent, AgentSession
+from livekit.plugins import openai, sarvam
+
+# Load environment variables
+load_dotenv()
+
+# Set up logging
+logger = logging.getLogger("voice-agent")
+logger.setLevel(logging.INFO)
+
+
+class VoiceAgent(Agent):
+    def __init__(self) -> None:
+        super().__init__(
+            # Your agent's personality and instructions
+            instructions="""
+                You are a helpful voice assistant.
+                Be friendly, concise, and conversational.
+                Speak naturally as if you're having a real conversation.
+            """,
+            
+            # Saaras v3 STT - Converts speech to text
+            stt=sarvam.STT(
+                language="unknown",  # Auto-detect language, or use "en-IN", "hi-IN", etc.
+                model="saaras:v3",
+                mode="transcribe"
+            ),
+            
+            # OpenAI LLM - The "brain" that processes and generates responses
+            llm=openai.LLM(model="gpt-4o"),
+            
+            # Bulbul TTS - Converts text to speech
+            tts=sarvam.TTS(
+                target_language_code="en-IN",
+                model="bulbul:v3",
+                speaker="shubh"  # Female: priya, simran, ishita, kavya | Male: aditya, anand, rohan
+            ),
+        )
+    
+    async def on_enter(self):
+        """Called when user joins - agent starts the conversation"""
+        self.session.generate_reply()
+
+
+async def entrypoint(ctx: JobContext):
+    """Main entry point - LiveKit calls this when a user connects"""
+    logger.info(f"User connected to room: {ctx.room.name}")
+    
+    # Create and start the agent session
+    session = AgentSession()
+    await session.start(
+        agent=VoiceAgent(),
+        room=ctx.room
+    )
+
+
+if __name__ == "__main__":
+    # Run the agent
+    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+```
+
+### 5. Run Your Agent
+
+```bash
+python agent.py dev
+```
+
+### 6. Test Your Agent
+
+In a new terminal, run:
+
+```bash
+python agent.py console
+```
+
+That's it! You've built your first voice agent!
+
+***
+
+## Customization Examples
+
+### Example 1: Hindi Voice Agent
+
+```python
+stt=sarvam.STT(
+    language="hi-IN",  # Hindi
+    model="saaras:v3",
+    mode="transcribe"
+),
+tts=sarvam.TTS(
+    target_language_code="hi-IN",
+    model="bulbul:v3",
+    speaker="simran"  # Or: priya, ishita, kavya, aditya, anand, rohan
+)
+```
+
+### Example 2: Tamil Voice Agent
+
+```python
+stt=sarvam.STT(language="ta-IN", model="saaras:v3", mode="transcribe"),
+tts=sarvam.TTS(
+    target_language_code="ta-IN",
+    model="bulbul:v3",
+    speaker="shubh"
+)
+```
+
+### Example 3: Multilingual Agent (Auto-detect)
+
+```python
+stt=sarvam.STT(language="unknown", model="saaras:v3", mode="transcribe"),  # Auto-detects language
+tts=sarvam.TTS(target_language_code="en-IN", model="bulbul:v3", speaker="anand")
+```
+
+### Example 4: Speech-to-English Agent (Saaras)
+
+**Difference**: Saaras v3 handles both transcription (same-language output) and translation (English output) via the `mode` parameter. Use `mode="translate"` when user speaks Indian languages but you want to process/respond in English.
+
+```python
+# User speaks Hindi → Saaras converts to English → LLM processes → Responds in English
+
+stt=sarvam.STT(model="saaras:v3", mode="translate"),  # Speech-to-English translation
+llm=openai.LLM(model="gpt-4o"),
+tts=sarvam.TTS(target_language_code="en-IN", model="bulbul:v3", speaker="aditya")
+```
+
+**Note:** Saaras v3 with `mode="translate"` automatically detects the source language (Hindi, Tamil, etc.) and translates spoken content directly to English text, making Indian language speech comprehensible to English-based LLMs.
+
+***
+
+## Available Options
+
+### Language Codes
+
+| Language        | Code      |
+| --------------- | --------- |
+| English (India) | `en-IN`   |
+| Hindi           | `hi-IN`   |
+| Bengali         | `bn-IN`   |
+| Tamil           | `ta-IN`   |
+| Telugu          | `te-IN`   |
+| Gujarati        | `gu-IN`   |
+| Kannada         | `kn-IN`   |
+| Malayalam       | `ml-IN`   |
+| Marathi         | `mr-IN`   |
+| Punjabi         | `pa-IN`   |
+| Odia            | `od-IN`   |
+| Auto-detect     | `unknown` |
+
+### Speaker Voices (Bulbul v3)
+
+**Male (23):** Shubh (default), Aditya, Rahul, Rohan, Amit, Dev, Ratan, Varun, Manan, Sumit, Kabir, Aayan, Ashutosh, Advait, Anand, Tarun, Sunny, Mani, Gokul, Vijay, Mohit, Rehan, Soham
+
+**Female (16):** Ritu, Priya, Neha, Pooja, Simran, Kavya, Ishita, Shreya, Roopa, Amelia, Sophia, Tanya, Shruti, Suhani, Kavitha, Rupali
+
+***
+
+## Pro Tips
+
+* Use `language="unknown"` to automatically detect the language. Great for multilingual scenarios!
+* Sarvam's models understand code-mixing - your agent can naturally handle Hinglish, Tanglish, and other mixed languages.
+
+***
+
+## Best Practices
+
+When using Sarvam AI plugins with LiveKit, follow these recommendations for optimal performance:
+
+### 1. Do Not Pass VAD to AgentSession
+
+The `vad` parameter should **not** be passed to `AgentSession` as Voice Activity Detection is handled internally by the Sarvam plugin.
+
+```python
+# ❌ Avoid this
+session = AgentSession(vad=silero.VAD.load())
+
+# ✅ Do this instead
+session = AgentSession()
+```
+
+### 2. Enable Flush Signal in STT
+
+Add `flush_signal=True` to the STT configuration. This enables the plugin to emit start and end of speech events, which is essential for proper turn-taking.
+
+```python
+stt=sarvam.STT(
+    language="unknown",
+    model="saaras:v3",
+    mode="transcribe",
+    flush_signal=True  # Enables speech start/end events
+)
+```
+
+### 3. Set Turn Detection to STT
+
+Add `turn_detection="stt"` to the `AgentSession` configuration. This ensures turn detection is handled by the Sarvam plugin, which emits start and end of speech signals.
+
+```python
+session = AgentSession(turn_detection="stt")
+```
+
+### 4. Configure Min Endpointing Delay
+
+Set `min_endpointing_delay=0.07` in your `AgentSession`. The Sarvam STT plugin has a processing latency of approximately 70ms. This setting ensures the agent transitions to the next pipeline step (LLM) as soon as STT finishes processing, minimizing response delay.
+
+```python
+session = AgentSession(
+    turn_detection="stt",
+    min_endpointing_delay=0.07
+)
+```
+
+### Complete Optimized Example
+
+Here's a complete example incorporating all best practices:
+
+```python
+# STT with flush_signal enabled
+stt=sarvam.STT(
+    language="unknown",
+    model="saaras:v3",
+    mode="transcribe",
+    flush_signal=True
+)
+
+# AgentSession with optimized settings (no VAD parameter)
+session = AgentSession(
+    turn_detection="stt",
+    min_endpointing_delay=0.07
+)
+```
+
+***
+
+## Troubleshooting
+
+**API key errors**: Check that all keys are in your `.env` file and the file is in the same directory as your script.
+
+**Module not found**: Run the installation command again based on your operating system (see Step 2 above).
+
+**Poor transcription**: Try `language="unknown"` for auto-detection, or specify the correct language code (`en-IN`, `hi-IN`, etc.).
+
+***
+
+## Additional Resources
+
+* [Sarvam AI Documentation](https://docs.sarvam.ai)
+* [LiveKit Documentation](https://docs.livekit.io)
+* [LiveKit Sarvam STT Plugin](https://docs.livekit.io/agents/models/stt/plugins/sarvam/)
+* [LiveKit Sarvam TTS Plugin](https://docs.livekit.io/agents/models/tts/plugins/sarvam/)
+
+***
+
+## Need Help?
+
+* Sarvam Support: [developer@sarvam.ai](mailto:developer@sarvam.ai)
+* Community: [Join the Discord Community](https://discord.com/invite/5rAsykttcs)
+
+***
+
+**Happy Building!**
