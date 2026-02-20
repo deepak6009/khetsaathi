@@ -370,6 +370,22 @@ export default function Home() {
     } catch {}
   }, []);
 
+  const voiceMsgCountRef = useRef(0);
+
+  const handleVoiceTranscript = useCallback((msg: ChatMessage) => {
+    setMessages((prev) => {
+      const newMessages = [...prev, msg];
+      if (msg.role === "user") {
+        voiceMsgCountRef.current += 1;
+        if (voiceMsgCountRef.current >= 2) {
+          runExtractionAgent(newMessages);
+        }
+      }
+      runPlanIntentAgent(newMessages);
+      return newMessages;
+    });
+  }, [runExtractionAgent, runPlanIntentAgent]);
+
   const sendMessage = useCallback(async () => {
     const text = chatInput.trim();
     if (!text || isTyping) return;
@@ -1246,7 +1262,7 @@ export default function Home() {
 
         {isVoiceActive && (
           <div className="border-t border-gray-100 bg-white">
-            <VoiceChat phone={phoneNumber} language={language} imageUrls={imageUrls} onClose={() => setIsVoiceActive(false)} />
+            <VoiceChat phone={phoneNumber} language={language} imageUrls={imageUrls} onClose={() => setIsVoiceActive(false)} onTranscript={handleVoiceTranscript} />
           </div>
         )}
 
@@ -1262,7 +1278,7 @@ export default function Home() {
               disabled={isTyping || chatPhase === "awaiting_plan_language" || isVoiceActive}
               data-testid="input-chat"
             />
-            <button onClick={() => setIsVoiceActive(!isVoiceActive)} disabled={isTyping}
+            <button onClick={() => { if (!isVoiceActive) voiceMsgCountRef.current = 0; setIsVoiceActive(!isVoiceActive); }} disabled={isTyping}
               className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${isVoiceActive ? "text-white shadow-md" : "bg-gray-50 border border-gray-200 text-gray-500"}`}
               style={isVoiceActive ? { backgroundColor: "#6BC30D" } : undefined}
               data-testid="button-voice-call">

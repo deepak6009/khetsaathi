@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Mic, MicOff, PhoneOff, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,22 +8,71 @@ import {
   BarVisualizer,
   useConnectionState,
   useLocalParticipant,
+  useRoomContext,
 } from "@livekit/components-react";
 import "@livekit/components-styles";
-import { ConnectionState } from "livekit-client";
+import { ConnectionState, RoomEvent, TranscriptionSegment, Participant } from "livekit-client";
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 
 interface VoiceChatProps {
   phone: string;
   language: string;
   imageUrls: string[];
   onClose: () => void;
+  onTranscript?: (message: ChatMessage) => void;
 }
 
-function VoiceAssistantUI({ language, onClose }: { language: string; onClose: () => void }) {
+function VoiceAssistantUI({
+  language,
+  onClose,
+  onTranscript,
+}: {
+  language: string;
+  onClose: () => void;
+  onTranscript?: (message: ChatMessage) => void;
+}) {
   const { audioTrack, state } = useVoiceAssistant();
   const connectionState = useConnectionState();
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
   const isMuted = !isMicrophoneEnabled;
+  const room = useRoomContext();
+  const processedSegmentsRef = useRef<Set<string>>(new Set());
+  const onTranscriptRef = useRef(onTranscript);
+  onTranscriptRef.current = onTranscript;
+
+  useEffect(() => {
+    if (!room) return;
+    processedSegmentsRef.current.clear();
+
+    const handleTranscription = (
+      segments: TranscriptionSegment[],
+      participant?: Participant,
+    ) => {
+      for (const segment of segments) {
+        if (segment.final && !processedSegmentsRef.current.has(segment.id)) {
+          processedSegmentsRef.current.add(segment.id);
+          const text = segment.text.trim();
+          if (text && onTranscriptRef.current) {
+            const isLocal = participant?.identity === localParticipant?.identity;
+            onTranscriptRef.current({
+              role: isLocal ? "user" : "assistant",
+              content: text,
+            });
+          }
+        }
+      }
+    };
+
+    room.on(RoomEvent.TranscriptionReceived, handleTranscription);
+    return () => {
+      room.off(RoomEvent.TranscriptionReceived, handleTranscription);
+      processedSegmentsRef.current.clear();
+    };
+  }, [room, localParticipant?.identity]);
 
   const toggleMute = useCallback(async () => {
     if (localParticipant) {
@@ -94,7 +143,7 @@ function VoiceAssistantUI({ language, onClose }: { language: string; onClose: ()
   );
 }
 
-export default function VoiceChat({ phone, language, imageUrls, onClose }: VoiceChatProps) {
+export default function VoiceChat({ phone, language, imageUrls, onClose, onTranscript }: VoiceChatProps) {
   const [connectionDetails, setConnectionDetails] = useState<{
     token: string;
     url: string;
@@ -103,11 +152,15 @@ export default function VoiceChat({ phone, language, imageUrls, onClose }: Voice
   const [micReady, setMicReady] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function initVoice() {
       try {
         await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (cancelled) return;
         setMicReady(true);
       } catch (micErr: any) {
+        if (cancelled) return;
         const micMessage = language === "Telugu"
           ? "మైక్రోఫోన్ అనుమతి అవసరం. దయచేసి బ్రౌజర్ సెట్టింగ్స్‌లో మైక్రోఫోన్ అనుమతించండి."
           : language === "Hindi"
@@ -123,6 +176,7 @@ export default function VoiceChat({ phone, language, imageUrls, onClose }: Voice
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ phone, language, imageUrls }),
         });
+        if (cancelled) return;
         if (!resp.ok) {
           const data = await resp.json();
           throw new Error(data.message || "Failed to get token");
@@ -130,10 +184,12 @@ export default function VoiceChat({ phone, language, imageUrls, onClose }: Voice
         const data = await resp.json();
         setConnectionDetails({ token: data.token, url: data.url });
       } catch (err: any) {
+        if (cancelled) return;
         setError(err.message || "Connection failed");
       }
     }
     initVoice();
+    return () => { cancelled = true; };
   }, [phone, language, imageUrls]);
 
   const handleDisconnect = useCallback(() => {
@@ -177,7 +233,7 @@ export default function VoiceChat({ phone, language, imageUrls, onClose }: Voice
       onDisconnected={handleDisconnect}
       onError={handleError}
     >
-      <VoiceAssistantUI language={language} onClose={handleDisconnect} />
+      <VoiceAssistantUI language={language} onClose={handleDisconnect} onTranscript={onTranscript} />
       <RoomAudioRenderer />
     </LiveKitRoom>
   );
