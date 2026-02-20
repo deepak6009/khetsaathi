@@ -41,11 +41,13 @@ Agricultural AI assistant where farmers upload crop images and receive disease d
 - `onboarding` → `dashboard` → `capture` → `chat`
 - All screens have localized "Back" button text (changes with language)
 - Dashboard is the main hub after onboarding
+- **Voice Guide**: Every screen after language selection has a floating speaker button (bottom-right) that auto-plays spoken instructions in the user's language using browser SpeechSynthesis API. Tap to replay or stop. Shows "Tap to hear instructions" hint if auto-play is blocked.
 
 ## Project Structure
 - `client/src/pages/home.tsx` - Main app with 4 screens: onboarding, dashboard, capture, chat
 - `client/src/pages/history.tsx` - Full diagnosis history page
 - `client/src/components/voice-chat.tsx` - WebSocket-based voice chat with Web Audio API VAD
+- `client/src/components/voice-guide-button.tsx` - Floating voice guide FAB with browser SpeechSynthesis (auto-plays instructions per screen in 3 languages)
 - `client/src/components/treatment-plan.tsx` - Legacy treatment plan display
 - `server/routes.ts` - API endpoints (10+ endpoints)
 - `server/services/chatService.ts` - Gemini-powered conversational AI
@@ -106,7 +108,7 @@ Agricultural AI assistant where farmers upload crop images and receive disease d
 ## Design System (v3 - Farmer-Friendly Green)
 - **Primary green**: #6BC30D (logo green) - buttons, accents, icons
 - **Secondary brown**: #964B00 (logo brown) - history icons, PDF badge
-- **Dark bg**: #032B22 - welcome screen, scan card, user chat bubbles
+- **Dark bg**: #032B22 - scan card, user chat bubbles
 - **White**: #ffffff - dashboard background, cards, light screens
 - **Black**: text color for readability
 - **Font**: Inter (Google Fonts) - clean, modern sans-serif
@@ -114,7 +116,7 @@ Agricultural AI assistant where farmers upload crop images and receive disease d
 - **Headers**: Frosted glass (backdrop-blur-xl, bg-white/90), logo + "KhetSaathi" centered
 - **All icons have text labels** (farmer-friendly UX, no icon-only buttons)
 - **Multi-language spacing**: Telugu/Hindi get extra leading-relaxed + tracking-wide
-- **Onboarding**: Language & Phone on white, Welcome on dark #032B22
+- **Onboarding**: All steps on white background (Language, Phone, Selfie, Welcome)
 - **Dashboard**: White bg, dark green scan hero card, green/brown accent icon boxes
 - **Chat**: User bubbles dark #032B22, assistant bubbles white with green bot icon
 - **Shadows**: shadow-sm for cards, shadow-md for active states, shadow-lg for hero CTA
