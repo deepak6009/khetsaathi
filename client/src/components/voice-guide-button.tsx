@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Volume2 } from "lucide-react";
 import { motion } from "framer-motion";
+import aiAvatarImage from "@/assets/images/ai-assistant-avatar.png";
 
 type ScreenKey = "phone" | "photo" | "welcome" | "dashboard" | "capture" | "chat";
 
@@ -37,6 +38,18 @@ const voiceMessages: Record<ScreenKey, Record<string, string>> = {
   },
 };
 
+const botLabel: Record<string, string> = {
+  English: "Tap to listen",
+  Telugu: "వినడానికి నొక్కండి",
+  Hindi: "सुनने के लिए टैप करें",
+};
+
+const speakingLabel: Record<string, string> = {
+  English: "Listening...",
+  Telugu: "వింటోంది...",
+  Hindi: "सुन रहा है...",
+};
+
 function getVoiceLang(language: string): string {
   switch (language) {
     case "Telugu": return "te-IN";
@@ -48,10 +61,9 @@ function getVoiceLang(language: string): string {
 interface VoiceGuideButtonProps {
   screen: ScreenKey;
   language: string;
-  dark?: boolean;
 }
 
-export default function VoiceGuideButton({ screen, language, dark = false }: VoiceGuideButtonProps) {
+export default function VoiceGuideButton({ screen, language }: VoiceGuideButtonProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const hasAutoPlayed = useRef(false);
@@ -161,49 +173,95 @@ export default function VoiceGuideButton({ screen, language, dark = false }: Voi
     }
   };
 
+  const label = isSpeaking
+    ? (speakingLabel[language] || speakingLabel.English)
+    : (showHint ? (botLabel[language] || botLabel.English) : (botLabel[language] || botLabel.English));
+
   return (
-    <>
-      <motion.button
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.3, duration: 0.3 }}
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.4, duration: 0.4, type: "spring", stiffness: 200 }}
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-1.5"
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 8, scale: 0.9 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ delay: 0.6, duration: 0.3 }}
+        className="px-4 py-2 rounded-2xl shadow-lg text-[13px] font-bold whitespace-nowrap backdrop-blur-md"
+        data-testid={`text-voice-label-${screen}`}
+        style={{
+          backgroundColor: isSpeaking ? "#6BC30D" : "rgba(255,255,255,0.95)",
+          color: isSpeaking ? "#ffffff" : "#1a1a1a",
+          border: isSpeaking ? "none" : "1px solid #e5e7eb",
+        }}
+      >
+        {isSpeaking && (
+          <span className="inline-flex items-center gap-1.5 mr-1">
+            <motion.span
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ repeat: Infinity, duration: 1.2, delay: 0 }}
+              className="w-1.5 h-1.5 rounded-full bg-white inline-block"
+            />
+            <motion.span
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ repeat: Infinity, duration: 1.2, delay: 0.2 }}
+              className="w-1.5 h-1.5 rounded-full bg-white inline-block"
+            />
+            <motion.span
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ repeat: Infinity, duration: 1.2, delay: 0.4 }}
+              className="w-1.5 h-1.5 rounded-full bg-white inline-block"
+            />
+          </span>
+        )}
+        {label}
+      </motion.div>
+
+      <button
         onClick={handleClick}
         data-testid={`button-voice-guide-${screen}`}
-        className={`fixed bottom-24 right-4 z-50 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 active:scale-95 ${
-          isSpeaking ? "ring-2 ring-offset-2" : ""
-        }`}
-        style={{
-          backgroundColor: isSpeaking ? "#6BC30D" : dark ? "rgba(255,255,255,0.15)" : "#ffffff",
-          border: isSpeaking ? "none" : "2px solid #6BC30D",
-        }}
+        className="relative group active:scale-95 transition-transform duration-150"
         aria-label={isSpeaking ? "Stop voice guide" : "Play voice guide"}
       >
-        {isSpeaking ? (
-          <motion.div
-            animate={{ scale: [1, 1.15, 1] }}
-            transition={{ repeat: Infinity, duration: 1.2 }}
-          >
-            <Volume2 className="w-5 h-5 text-white" />
-          </motion.div>
-        ) : (
-          <Volume2 className="w-5 h-5" style={{ color: dark ? "#ffffff" : "#6BC30D" }} />
-        )}
-      </motion.button>
-
-      {showHint && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-[7.5rem] right-4 z-50 px-3 py-1.5 rounded-lg shadow-md text-[12px] font-semibold"
+        <div
+          className={`w-16 h-16 rounded-full overflow-hidden shadow-xl transition-all duration-300 ${
+            isSpeaking ? "ring-4 ring-offset-2" : "ring-2 ring-offset-1"
+          }`}
           style={{
-            backgroundColor: dark ? "rgba(255,255,255,0.2)" : "#f0fdf4",
-            color: dark ? "#ffffff" : "#15803d",
-            border: `1px solid ${dark ? "rgba(255,255,255,0.15)" : "#bbf7d0"}`,
+            borderColor: "#6BC30D",
+            boxShadow: isSpeaking
+              ? "0 0 0 4px rgba(107, 195, 13, 0.3), 0 8px 25px rgba(0,0,0,0.2)"
+              : "0 4px 15px rgba(0,0,0,0.15)",
           }}
         >
-          Tap to hear instructions
-        </motion.div>
-      )}
-    </>
+          <img
+            src={aiAvatarImage}
+            alt="AI Assistant"
+            className="w-full h-full object-cover"
+          />
+        </div>
+
+        {isSpeaking && (
+          <motion.div
+            className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center shadow-md"
+            style={{ backgroundColor: "#6BC30D" }}
+            animate={{ scale: [1, 1.2, 1] }}
+            transition={{ repeat: Infinity, duration: 1.5 }}
+          >
+            <Volume2 className="w-3 h-3 text-white" />
+          </motion.div>
+        )}
+
+        {!isSpeaking && (
+          <div
+            className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center shadow-md border border-white"
+            style={{ backgroundColor: "#6BC30D" }}
+          >
+            <Volume2 className="w-3 h-3 text-white" />
+          </div>
+        )}
+      </button>
+    </motion.div>
   );
 }

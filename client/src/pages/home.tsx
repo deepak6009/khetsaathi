@@ -624,13 +624,9 @@ export default function Home() {
   const currentVisibleIdx = visibleSteps.indexOf(onboardingStep);
 
   if (screen === "onboarding") {
-    const isDarkScreen = onboardingStep === "welcome";
-
     return (
-      <div className={`min-h-screen flex flex-col ${isDarkScreen ? "text-white" : "bg-white"}`}
-        style={isDarkScreen ? { backgroundColor: "#032B22" } : undefined}>
+      <div className="min-h-screen flex flex-col bg-white">
         <AppHeader
-          dark={isDarkScreen}
           showBack={onboardingStep !== "language"}
           onBack={() => {
             const idx = onboardingSteps.indexOf(onboardingStep);
@@ -875,10 +871,10 @@ export default function Home() {
               <motion.div key="welcome" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
                 <div className="flex flex-col items-center text-center space-y-6">
                   <div className="space-y-3 px-2 pt-4">
-                    <h2 className={`text-[28px] font-extrabold text-white tracking-tight leading-tight ${langSpace(language)}`}>
+                    <h2 className={`text-[28px] font-extrabold text-gray-900 tracking-tight leading-tight ${langSpace(language)}`}>
                       {getLabel("welcomeTitle")}
                     </h2>
-                    <p className={`text-[15px] text-white/80 max-w-[300px] mx-auto ${langSpace(language)}`}>
+                    <p className={`text-[15px] text-gray-600 max-w-[300px] mx-auto ${langSpace(language)}`}>
                       {getLabel("welcomeDesc")}
                     </p>
                   </div>
@@ -889,17 +885,17 @@ export default function Home() {
                       { icon: CalendarDays, label: "welcomeFeature2" as const },
                       { icon: Shield, label: "welcomeFeature3" as const },
                     ].map(({ icon: Icon, label }) => (
-                      <div key={label} className="flex items-center gap-3.5 px-4 py-3.5 rounded-xl bg-white/8 border border-white/10">
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#6BC30D20" }}>
+                      <div key={label} className="flex items-center gap-3.5 px-4 py-3.5 rounded-xl bg-gray-50 border border-gray-200">
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#6BC30D15" }}>
                           <Icon className="w-[18px] h-[18px]" style={{ color: "#6BC30D" }} />
                         </div>
-                        <span className={`text-[14px] font-medium text-white/90 text-left ${langSpace(language)}`}>{getLabel(label)}</span>
+                        <span className={`text-[14px] font-semibold text-gray-800 text-left ${langSpace(language)}`}>{getLabel(label)}</span>
                       </div>
                     ))}
                   </div>
 
                   <Button
-                    className="w-full gap-2 h-14 rounded-2xl text-base font-bold shadow-lg hover:shadow-xl transition-shadow border-0 text-black"
+                    className="w-full gap-2 h-14 rounded-2xl text-base font-bold shadow-lg hover:shadow-xl transition-shadow border-0 text-white"
                     style={{ backgroundColor: "#6BC30D" }}
                     size="lg"
                     onClick={() => { setScreen("dashboard"); fetchRecentHistory(phoneNumber); }}
@@ -908,7 +904,7 @@ export default function Home() {
                     <span className={langSpace(language)}>{getLabel("startNow")}</span> <ArrowRight className="w-5 h-5" />
                   </Button>
 
-                  <p className={`text-xs text-white/60 font-medium mt-2 ${langSpace(language)}`}>
+                  <p className={`text-xs text-gray-400 font-medium mt-2 ${langSpace(language)}`}>
                     {getLabel("swipeToStart")}
                   </p>
                 </div>
@@ -919,15 +915,13 @@ export default function Home() {
 
         {onboardingStep === "phone" && <VoiceGuideButton screen="phone" language={language} />}
         {onboardingStep === "selfie" && <VoiceGuideButton screen="photo" language={language} />}
-        {onboardingStep === "welcome" && <VoiceGuideButton screen="welcome" language={language} dark />}
+        {onboardingStep === "welcome" && <VoiceGuideButton screen="welcome" language={language} />}
 
-        {!isDarkScreen && (
-          <footer className="mt-auto">
-            <div className="max-w-lg mx-auto px-4 py-4 text-center text-xs text-gray-500 font-medium">
-              KhetSaathi &middot; {getLabel("footer")}
-            </div>
-          </footer>
-        )}
+        <footer className="mt-auto">
+          <div className="max-w-lg mx-auto px-4 py-4 text-center text-xs text-gray-500 font-medium">
+            KhetSaathi &middot; {getLabel("footer")}
+          </div>
+        </footer>
       </div>
     );
   }
