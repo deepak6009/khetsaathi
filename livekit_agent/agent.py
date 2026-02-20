@@ -171,6 +171,9 @@ class KhetSaathiAgent(Agent):
         if self.message_count >= 2 and not self.extracted_crop and not self.diagnosis_in_progress:
             asyncio.create_task(self._run_extraction())
 
+        if self.diagnosis and not self.plan_generated:
+            asyncio.create_task(self._check_plan_intent())
+
     async def _run_extraction(self):
         try:
             messages = self._conversation_history.copy()
@@ -271,6 +274,71 @@ class KhetSaathiAgent(Agent):
                 msg += f" As an immediate step, {immediate_action}."
             msg += " Don't worry, we can manage this together!"
         return msg
+
+    async def _check_plan_intent(self):
+        try:
+            messages = self._conversation_history.copy()
+            if len(messages) < 4:
+                return
+
+            async with aiohttp.ClientSession() as http_session:
+                async with http_session.post(
+                    f"{BACKEND_URL}/api/chat/detect-plan-intent",
+                    json={"messages": messages},
+                    timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        if data.get("wantsPlan") and not self.plan_generated:
+                            logger.info("Farmer wants treatment plan, generating...")
+                            await self._generate_plan()
+        except Exception as e:
+            logger.error(f"Plan intent check error: {e}")
+
+    async def _generate_plan(self):
+        if self.plan_generated:
+            return
+        self.plan_generated = True
+        try:
+            async with aiohttp.ClientSession() as http_session:
+                async with http_session.post(
+                    f"{BACKEND_URL}/api/chat/generate-plan",
+                    json={
+                        "messages": self._conversation_history,
+                        "diagnosis": self.diagnosis,
+                        "language": self.user_language,
+                        "imageUrls": self.image_urls,
+                        "phone": self.phone,
+                    },
+                    timeout=aiohttp.ClientTimeout(total=60)
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        plan_summary = data.get("planSummaryMessage", "")
+                        logger.info("Plan generated successfully")
+
+                        new_instructions = PLAN_DONE_PROMPT.replace("{LANGUAGE}", self.user_language)
+                        await self.update_instructions(new_instructions)
+
+                        if plan_summary:
+                            self._conversation_history.append({"role": "assistant", "content": plan_summary})
+                            self.session.say(plan_summary, add_to_chat_ctx=True)
+                            logger.info("Spoke plan summary to farmer")
+                        else:
+                            fallback = self._get_plan_fallback()
+                            self._conversation_history.append({"role": "assistant", "content": fallback})
+                            self.session.say(fallback, add_to_chat_ctx=True)
+        except Exception as e:
+            logger.error(f"Plan generation error: {e}")
+            self.plan_generated = False
+
+    def _get_plan_fallback(self) -> str:
+        if self.user_language == "Hindi":
+            return "आपकी 7 दिन की उपचार योजना तैयार है! इसमें आपकी फसल के इलाज की पूरी जानकारी है। कोई सवाल हो तो पूछिए।"
+        elif self.user_language == "Telugu":
+            return "మీ 7 రోజుల చికిత్స ప్రణాళిక సిద్ధంగా ఉంది! దీనిలో మీ పంట చికిత్స వివరాలు ఉన్నాయి. ఏవైనా సందేహాలు ఉంటే అడగండి."
+        else:
+            return "Your 7-day treatment plan is ready! It has all the details for treating your crop. Feel free to ask if you have any questions."
 
 
 async def entrypoint(ctx: JobContext):
