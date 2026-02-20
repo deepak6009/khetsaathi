@@ -224,10 +224,53 @@ class KhetSaathiAgent(Agent):
 
                         await self.update_instructions(new_instructions)
                         logger.info("Updated agent instructions with diagnosis results")
+
+                        diagnosis_msg = self._build_diagnosis_message()
+                        if diagnosis_msg:
+                            self._conversation_history.append({"role": "assistant", "content": diagnosis_msg})
+                            self.session.say(diagnosis_msg, add_to_chat_ctx=True)
+                            logger.info("Spoke diagnosis results to farmer")
         except Exception as e:
             logger.error(f"Diagnosis error: {e}")
         finally:
             self.diagnosis_in_progress = False
+
+    def _build_diagnosis_message(self) -> str:
+        if not self.diagnosis:
+            return ""
+        disease = self.diagnosis.get("disease", "")
+        symptoms = self.diagnosis.get("symptoms_observed", "")
+        immediate_action = self.diagnosis.get("immediate_action", "")
+        severity = self.diagnosis.get("severity", "")
+
+        if self.user_language == "Hindi":
+            msg = f"आपकी फसल की तस्वीरें देखकर पता चला है कि यह {disease} बीमारी है।"
+            if severity:
+                msg += f" इसकी गंभीरता {severity} स्तर की है।"
+            if symptoms:
+                msg += f" लक्षण: {symptoms}।"
+            if immediate_action:
+                msg += f" तुरंत यह करें: {immediate_action}।"
+            msg += " चिंता मत करिए, हम इसका इलाज कर सकते हैं!"
+        elif self.user_language == "Telugu":
+            msg = f"మీ పంట ఫోటోలు చూసి తెలిసింది, ఇది {disease} వ్యాధి."
+            if severity:
+                msg += f" తీవ్రత {severity} స్థాయిలో ఉంది."
+            if symptoms:
+                msg += f" లక్షణాలు: {symptoms}."
+            if immediate_action:
+                msg += f" వెంటనే చేయండి: {immediate_action}."
+            msg += " చింతించకండి, మనం దీన్ని నయం చేయగలం!"
+        else:
+            msg = f"After looking at your crop photos, I can see this is {disease}."
+            if severity:
+                msg += f" The severity is {severity}."
+            if symptoms:
+                msg += f" I can see {symptoms}."
+            if immediate_action:
+                msg += f" As an immediate step, {immediate_action}."
+            msg += " Don't worry, we can manage this together!"
+        return msg
 
 
 async def entrypoint(ctx: JobContext):
