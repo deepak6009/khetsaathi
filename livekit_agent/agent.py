@@ -263,7 +263,8 @@ async def entrypoint(ctx: JobContext):
         ),
         tts=sarvam.TTS(
             target_language_code=lang_config["tts"],
-            model="bulbul:v2",
+            model="bulbul:v3",
+            speaker="shubh",
             pace=0.9,
             enable_preprocessing=True,
         ),
