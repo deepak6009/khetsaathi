@@ -37,8 +37,9 @@ CRITICAL LANGUAGE RULE: You MUST respond ENTIRELY in {LANGUAGE}. Every single wo
 The farmer has uploaded photos of their sick crop. You need to understand their full situation before you can help.
 
 CONVERSATION FLOW — follow this order. Ask ONLY ONE question per message:
+NOTE: The greeting and name question has ALREADY been spoken to the farmer. Do NOT repeat it. Start from their response.
 
-1. First ask their name warmly.
+1. (Already done) Greeting and asking their name.
 2. Which crop they are growing.
 3. Where is their farm (village or district).
 4. How long ago did they plant this crop?
@@ -110,7 +111,7 @@ class KhetSaathiAgent(Agent):
     async def on_enter(self):
         greeting = self._get_greeting()
         self._conversation_history.append({"role": "assistant", "content": greeting})
-        await self.session.generate_reply(instructions=f"Say exactly this greeting to the user: {greeting}")
+        self.session.say(greeting, add_to_chat_ctx=True)
 
     def _get_greeting(self) -> str:
         if self.user_language == "Telugu":
