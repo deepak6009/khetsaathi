@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import VoiceChat from "@/components/voice-chat";
+import VoiceGuideButton from "@/components/voice-guide-button";
 import logoImage from "@assets/Blue_and_Green_Farmers_Instagram_Post_(2)_1771525392133.png";
 import farmerRefImage from "@assets/farmer_ref_optimized.jpg";
 
@@ -916,6 +917,10 @@ export default function Home() {
           </AnimatePresence>
         </main>
 
+        {onboardingStep === "phone" && <VoiceGuideButton screen="phone" language={language} />}
+        {onboardingStep === "selfie" && <VoiceGuideButton screen="photo" language={language} />}
+        {onboardingStep === "welcome" && <VoiceGuideButton screen="welcome" language={language} dark />}
+
         {!isDarkScreen && (
           <footer className="mt-auto">
             <div className="max-w-lg mx-auto px-4 py-4 text-center text-xs text-gray-500 font-medium">
@@ -1069,6 +1074,8 @@ export default function Home() {
           </div>
         </main>
 
+        <VoiceGuideButton screen="dashboard" language={language} />
+
         <footer className="mt-auto">
           <div className="max-w-lg mx-auto px-4 py-4 text-center text-xs text-gray-500 font-medium">
             KhetSaathi &middot; {getLabel("footer")}
@@ -1152,6 +1159,7 @@ export default function Home() {
             </Button>
           </div>
         </main>
+        <VoiceGuideButton screen="capture" language={language} />
       </div>
     );
   }
@@ -1350,6 +1358,7 @@ export default function Home() {
           </div>
         </div>
       </main>
+      <VoiceGuideButton screen="chat" language={language} />
     </div>
   );
 }
